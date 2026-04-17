@@ -38,7 +38,7 @@ const ContactDetailsSchema = new mongoose.Schema(
       },
     ],
   },
-  { _id: false }
+  { _id: false },
 );
 
 // Education Schema
@@ -51,7 +51,7 @@ const EducationSchema = new mongoose.Schema(
     grade: { type: String }, // e.g., "A+", "3.8/4.0"
     specialization: { type: String }, // e.g., "Computer Science"
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Experience Schema
@@ -65,7 +65,7 @@ const ExperienceSchema = new mongoose.Schema(
     responsibilities: [{ type: String }],
     technologiesUsed: [{ type: String }],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Project Schema
@@ -77,7 +77,7 @@ const ProjectSchema = new mongoose.Schema(
     projectUrl: { type: String },
     githubRepo: { type: String },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Skill Schema
@@ -92,7 +92,20 @@ const SkillSchema = new mongoose.Schema(
     },
     yearsOfExperience: { type: Number, min: 0 },
   },
-  { timestamps: true }
+  { timestamps: true },
+);
+
+// Portfolio Schema
+const PortfolioSchema = new mongoose.Schema(
+  {
+    link: { type: String, default: null, unique: true, sparse: true },
+    isGenerated: {
+      type: Boolean,
+      required: true,
+      default: false, // if link is there then isGenerated should be true
+    },
+  },
+  { timestamps: true },
 );
 
 // Helper function to limit array length
@@ -117,8 +130,12 @@ const UserSchema = new mongoose.Schema(
     experience: [ExperienceSchema],
     projects: [ProjectSchema],
     skills: [SkillSchema],
+    portfolio: {
+      type: PortfolioSchema,
+      default: () => ({}),
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Pre-save hook to hash passwords

@@ -37,7 +37,7 @@ const updateContactDetails = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("contactDetails");
 
     if (!user) {
@@ -85,7 +85,7 @@ const addEducation = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $push: { education: educationData } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("education");
 
     if (!user) {
@@ -117,7 +117,7 @@ const updateEducation = async (req, res) => {
     }
 
     const educationIndex = user.education.findIndex(
-      (edu) => edu._id.toString() === educationId
+      (edu) => edu._id.toString() === educationId,
     );
 
     if (educationIndex === -1) {
@@ -147,7 +147,7 @@ const deleteEducation = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $pull: { education: { _id: educationId } } },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {
@@ -191,7 +191,7 @@ const addExperience = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $push: { experience: experienceData } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("experience");
 
     if (!user) {
@@ -223,7 +223,7 @@ const updateExperience = async (req, res) => {
     }
 
     const experienceIndex = user.experience.findIndex(
-      (exp) => exp._id.toString() === experienceId
+      (exp) => exp._id.toString() === experienceId,
     );
 
     if (experienceIndex === -1) {
@@ -253,7 +253,7 @@ const deleteExperience = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $pull: { experience: { _id: experienceId } } },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {
@@ -297,7 +297,7 @@ const addProject = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $push: { projects: projectData } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("projects");
 
     if (!user) {
@@ -329,7 +329,7 @@ const updateProject = async (req, res) => {
     }
 
     const projectIndex = user.projects.findIndex(
-      (proj) => proj._id.toString() === projectId
+      (proj) => proj._id.toString() === projectId,
     );
 
     if (projectIndex === -1) {
@@ -359,7 +359,7 @@ const deleteProject = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $pull: { projects: { _id: projectId } } },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {
@@ -403,7 +403,7 @@ const addSkill = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $push: { skills: skillData } },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("skills");
 
     if (!user) {
@@ -435,7 +435,7 @@ const updateSkill = async (req, res) => {
     }
 
     const skillIndex = user.skills.findIndex(
-      (skill) => skill._id.toString() === skillId
+      (skill) => skill._id.toString() === skillId,
     );
 
     if (skillIndex === -1) {
@@ -465,7 +465,7 @@ const deleteSkill = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { $pull: { skills: { _id: skillId } } },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {

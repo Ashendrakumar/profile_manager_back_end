@@ -13,7 +13,7 @@ const authenticateToken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || config.jwtSecret
+      process.env.JWT_SECRET || config.jwtSecret,
     );
     req.user = decoded;
 

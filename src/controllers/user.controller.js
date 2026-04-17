@@ -69,6 +69,10 @@ const loginUser = async (req, res) => {
         name: user.username,
         email: user.email,
         role: user.role,
+        portfolio: {
+          link: user.portfolio.link,
+          isGenerated: user.portfolio.isGenerated,
+        },
       },
     });
   } catch (err) {
