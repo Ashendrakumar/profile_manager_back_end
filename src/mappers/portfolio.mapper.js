@@ -1,11 +1,10 @@
-import { use } from "react";
-
 const links = [
   { label: "About", url: "/about" },
   { label: "Projects", url: "/projects" },
   { label: "Contact", url: "/contact" },
   { label: "Experience", url: "/experience" },
 ];
+
 const mapUserToPortfolio = (user) => {
   if (!user) return null;
 
