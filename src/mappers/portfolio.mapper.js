@@ -1,3 +1,11 @@
+import { use } from "react";
+
+const links = [
+  { label: "About", url: "/about" },
+  { label: "Projects", url: "/projects" },
+  { label: "Contact", url: "/contact" },
+  { label: "Experience", url: "/experience" },
+];
 const mapUserToPortfolio = (user) => {
   if (!user) return null;
 
@@ -6,12 +14,7 @@ const mapUserToPortfolio = (user) => {
       projectName: user.username || "",
       projectOptionName: "",
       profileImage: "/assets/img/profile-pic.jpg",
-      projectNavLink: [
-        { label: "About", url: "/about" },
-        { label: "Projects", url: "/projects" },
-        { label: "Contact", url: "/contact" },
-        { label: "Resume", url: "/resume" },
-      ],
+      projectNavLink: links,
     },
 
     contactData: {
@@ -19,7 +22,9 @@ const mapUserToPortfolio = (user) => {
       sub_title: "Get in touch with me",
       fName: user.username || "",
       lName: "",
-      role: user.experience?.[0]?.role || "Software Engineer",
+      role:
+        user.experience?.[user.experience?.length - 1]?.role ||
+        "Software Engineer",
 
       contact: [
         {
@@ -145,13 +150,8 @@ const mapUserToPortfolio = (user) => {
     },
 
     footerData: {
-      footerText: "Copyright © 2026",
-      footerLinks: [
-        { label: "Home", url: "/" },
-        { label: "About", url: "/about" },
-        { label: "Contact", url: "/contact" },
-        { label: "Resume", url: "/resume" },
-      ],
+      footerText: `Copyright © ${new Date().getFullYear()} ${user.username}. All rights reserved.`,
+      footerLinks: links,
     },
 
     socialLinks:
