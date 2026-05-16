@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 // Contact Details Schema
 const ContactDetailsSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true },
+    // email: { type: String, required: true },
     phones: {
       type: [
         {
@@ -98,7 +98,7 @@ const SkillSchema = new mongoose.Schema(
 // Portfolio Schema
 const PortfolioSchema = new mongoose.Schema(
   {
-    link: { type: String, default: null, unique: true, sparse: true },
+    link: { type: String, default: null, sparse: true },
     isGenerated: {
       type: Boolean,
       required: true,

@@ -6,13 +6,13 @@ import User from "../models/User.js";
 const getContactDetails = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select("contactDetails");
+    const user = await User.findById(userId).select("email contactDetails");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    res.json({ contactDetails: user.contactDetails || null });
+    const personContact = { ...user.email, ...user.contactDetails };
+    res.json({ contactDetails: personContact || null });
   } catch (err) {
     res
       .status(500)
