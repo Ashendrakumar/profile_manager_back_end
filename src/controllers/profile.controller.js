@@ -11,8 +11,11 @@ const getContactDetails = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const personContact = { ...user.email, ...user.contactDetails };
-    res.json({ contactDetails: personContact || null });
+    const personContact = {
+      email: user.email,
+      ...(user.contactDetails?.toObject?.() || user.contactDetails || null),
+    };
+    res.json({ contactDetails: personContact });
   } catch (err) {
     res
       .status(500)
