@@ -98,7 +98,11 @@ const SkillSchema = new mongoose.Schema(
 // Portfolio Schema
 const PortfolioSchema = new mongoose.Schema(
   {
-    link: { type: String, default: null, sparse: true },
+    link: {
+      type: String,
+      sparse: true,
+      trim: true,
+    },
     isGenerated: {
       type: Boolean,
       required: true,
@@ -132,8 +136,8 @@ const UserSchema = new mongoose.Schema(
     skills: [SkillSchema],
     portfolio: {
       type: PortfolioSchema,
-      default: () => ({}),
     },
+    profileImage: { type: String, default: "" },
   },
   { timestamps: true },
 );

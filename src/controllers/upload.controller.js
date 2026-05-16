@@ -1,4 +1,5 @@
 import { createUploader } from "../middlewares/upload.js";
+import User from "../models/User.js";
 
 // ===============================
 // Upload Configs
@@ -35,10 +36,18 @@ const uploadProfile = async (req, res) => {
       });
     }
 
+    const userId = req.user.userId;
+    // Relative image path
+    const profileImage = `/uploads/profiles/${req.file.filename}`;
+    const updatedUser = User.findByIdAndUpdate(userId, {
+      profileImage: profileImage,
+    });
+
     return res.status(200).json({
       success: true,
       message: "Profile uploaded successfully",
       file: req.file,
+      profileImage: updatedUser.profileImage,
     });
   } catch (error) {
     return res.status(500).json({
