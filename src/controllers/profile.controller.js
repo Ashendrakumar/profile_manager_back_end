@@ -287,6 +287,31 @@ const deleteExperience = async (req, res) => {
   }
 };
 
+const getCompanies = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("experience");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const projectByCompany = new Map();
+    for (const project of user.projects) {
+      // only consider work projects for experience section
+      if (project.projectType !== "work") continue;
+      if (!projectByCompany.has(project.company)) {
+        projectByCompany.set(project.company, []);
+      }
+      projectByCompany.get(project.company).push(project);
+    }
+
+    res.json({ experience: projectByCompany || [] });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch experience", error: err.message });
+  }
+};
 // ==================== Projects ====================
 
 // Get all projects
@@ -513,6 +538,7 @@ export {
   addExperience,
   updateExperience,
   deleteExperience,
+  getCompanies,
   // Projects
   getProjects,
   addProject,

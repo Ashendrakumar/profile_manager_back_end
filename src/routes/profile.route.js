@@ -13,6 +13,7 @@ import {
   addExperience,
   updateExperience,
   deleteExperience,
+  getCompanies,
   // Projects
   getProjects,
   addProject,
@@ -47,7 +48,7 @@ router.get("/experience", getExperience);
 router.post("/experience", addExperience);
 router.put("/experience/:experienceId", updateExperience);
 router.delete("/experience/:experienceId", deleteExperience);
-
+router.get("experience/companies", getCompanies);
 // Projects routes
 router.get("/projects", getProjects);
 router.post("/projects", addProject);
