@@ -73,6 +73,20 @@ const ProjectSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: true },
+    projectType: {
+      type: String,
+      enum: ["personal", "work"],
+      default: "personal",
+    },
+    // if projectType is work then companyName is required
+    company: {
+      type: String,
+      required: function () {
+        return this.projectType === "work";
+      },
+      sparse: true,
+      trim: true,
+    }, // company associated with the project (if work-related) From the list of companies in experience section
     technologies: [{ type: String }],
     projectUrl: { type: String },
     githubRepo: { type: String },
