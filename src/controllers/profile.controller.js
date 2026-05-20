@@ -176,24 +176,24 @@ const getExperience = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const projectByCompany = new Map();
-    for (const project of user.projects) {
-      // only consider work projects for experience section
-      if (project.projectType !== "work") continue;
-      if (!projectByCompany.has(project.company)) {
-        projectByCompany.set(project.company, []);
-      }
-      projectByCompany.get(project.company).push(project);
-    }
+    // const projectByCompany = new Map();
+    // for (const project of user.projects) {
+    //   // only consider work projects for experience section
+    //   if (project.projectType !== "work") continue;
+    //   if (!projectByCompany.has(project.company)) {
+    //     projectByCompany.set(project.company, []);
+    //   }
+    //   projectByCompany.get(project.company).push(project);
+    // }
 
-    const UserExperience = user.experience.map((exp) => {
-      return {
-        ...exp.toObject(),
-        projects: projectByCompany.get(exp.companyName) || [],
-      };
-    });
+    // const UserExperience = user.experience.map((exp) => {
+    //   return {
+    //     ...exp.toObject(),
+    //     projects: projectByCompany.get(exp.companyName) || [],
+    //   };
+    // });
 
-    res.json({ experience: UserExperience || [] });
+    res.json({ experience: user.experience || [] });
   } catch (err) {
     res
       .status(500)
