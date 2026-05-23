@@ -157,7 +157,7 @@ const mapUserToPortfolio = (user) => {
       user.contactDetails?.socialLinks?.map((s) => ({
         name: s.platform,
         link: s.url,
-        icon: `fab fa-${s.platform}`,
+        icon: `fab fa-${s.platform?.toLowerCase()?.trim()}`,
         color: "#000",
       })) || [],
   };
