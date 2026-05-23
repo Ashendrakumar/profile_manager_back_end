@@ -12,7 +12,7 @@ const mapUserToPortfolio = (user) => {
     projectNavbarData: {
       projectName: user.username || "",
       projectOptionName: "",
-      profileImage: "/assets/img/profile-pic.jpg",
+      profileImage: user.profileImage || "",
       projectNavLink: links,
     },
 
@@ -42,7 +42,7 @@ const mapUserToPortfolio = (user) => {
           title: "Address",
           displayName: `${a.city}, ${a.state}, ${a.country}`,
           link: "#",
-          icon: "fa-map-marker-alt",
+          icon: "fa fa-map-marker-alt",
         })),
       ],
 
@@ -98,7 +98,7 @@ const mapUserToPortfolio = (user) => {
     resumeData: {
       resumeLink: "",
       downloadLink: "",
-      downloadText: "Download Resume",
+      downloadText: "Resume",
       downloadIcon: "fa fa-download",
       resumeName: `${user.username}-Resume`,
       resumeHeading: "Resume",
@@ -142,7 +142,7 @@ const mapUserToPortfolio = (user) => {
         skillItems:
           user.skills?.map((s) => ({
             name: s.name,
-            icon: "fa fa-code",
+            icon: `fa fa-${s?.name?.toLowerCase()?.trim()}`,
             level: mapSkillLevel(s.level),
           })) || [],
       },
@@ -157,7 +157,7 @@ const mapUserToPortfolio = (user) => {
       user.contactDetails?.socialLinks?.map((s) => ({
         name: s.platform,
         link: s.url,
-        icon: "fab fa-linkedin",
+        icon: `fab fa-${s.platform}`,
         color: "#000",
       })) || [],
   };

@@ -33,7 +33,12 @@ const ContactDetailsSchema = new mongoose.Schema(
     },
     socialLinks: [
       {
-        platform: { type: String, required: true }, // e.g., 'linkedin', 'github', 'twitter'
+        platform: {
+          type: String,
+          enum: ["linkedin", "github", "twitter", "portfolio"],
+          default: "linkedin",
+          required: true,
+        }, // e.g., 'linkedin', 'github', 'twitter', 'portfolio'
         url: { type: String, required: true },
       },
     ],
