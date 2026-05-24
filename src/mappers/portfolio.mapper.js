@@ -62,13 +62,13 @@ const mapUserToPortfolio = (user) => {
       title: "About",
       description: user.about || "",
       "sub-description": "",
-      image: "/assets/img/profile-pic.jpg",
+      image: user.profileImage || "",
       "more-info": "Read More",
       more_details: {},
     },
 
     resumeData: {
-      resumeLink: `/assets/resume/${user.username}-Resume.pdf`,
+      resumeLink: `${user.resume}`,
       downloadLink: `${user.resume}`,
       downloadText: "Resume",
       downloadIcon: "fa fa-download",
