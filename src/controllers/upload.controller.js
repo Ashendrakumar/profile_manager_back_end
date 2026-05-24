@@ -144,11 +144,14 @@ const downloadResume = async (req, res) => {
     }
 
     const resumePath = `${process.cwd()}/src${user.resume}`;
-    
+
     // Set proper download headers
-    res.setHeader("Content-Disposition", `attachment; filename="${user.resume.split("/").pop()}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${user.resume.split("/").pop()}"`,
+    );
     res.setHeader("Content-Type", "application/pdf");
-    
+
     res.download(resumePath, (err) => {
       if (err) {
         return res.status(500).json({
@@ -166,11 +169,11 @@ const downloadResume = async (req, res) => {
   }
 };
 
-
 const downloadFileByPath = (req, res) => {
   try {
     const resumePath = req.user.resume;
-   const  resumeDownloadUrl = getDownloadUrl(user.resume),
+    const resumeDownloadUrl = getDownloadUrl(user.resume);
+
     if (!resumePath || !resumeDownloadUrl) {
       return res.status(404).json({
         success: false,
@@ -197,4 +200,10 @@ const getDownloadUrl = (filePath) => {
   return `${baseUrl}${filePath}`;
 };
 
-export { uploadProfile, uploadHeroImages, uploadResumePdf, downloadFileByPath , downloadResume };
+export {
+  uploadProfile,
+  uploadHeroImages,
+  uploadResumePdf,
+  downloadFileByPath,
+  downloadResume,
+};
