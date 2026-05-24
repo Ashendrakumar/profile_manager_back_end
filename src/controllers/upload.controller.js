@@ -13,6 +13,10 @@ const heroUpload = createUploader({
   folder: "heroes",
 });
 
+const portfolioUpload = createUploader({
+  folder: "portfolios",
+});
+
 // ===============================
 // Single Profile Upload
 // ===============================
@@ -39,9 +43,11 @@ const uploadProfile = async (req, res) => {
     const userId = req.user.userId;
     // Relative image path
     const profileImage = `/uploads/profiles/${req.file.filename}`;
-    const updatedUser = User.findByIdAndUpdate(userId, {
-      profileImage: profileImage,
-    });
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profileImage: profileImage },
+      { new: true },
+    );
 
     return res.status(200).json({
       success: true,
@@ -93,4 +99,36 @@ const uploadHeroImages = async (req, res) => {
   }
 };
 
-export { uploadProfile, uploadHeroImages };
+const uploadResumePdf = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume PDF is required",
+      });
+    }
+
+    const userId = req.user.userId;
+    // Relative file path
+    const resumePath = `/uploads/portfolios/${req.file.filename}`;
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { resume: resumePath },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Resume uploaded successfully",
+      file: req.file,
+      resume: updatedUser.resume,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export { uploadProfile, uploadHeroImages, uploadResumePdf };

@@ -157,6 +157,7 @@ const UserSchema = new mongoose.Schema(
       type: PortfolioSchema,
     },
     profileImage: { type: String, default: "" },
+    resume: { type: String, default: "" },
   },
   { timestamps: true },
 );
