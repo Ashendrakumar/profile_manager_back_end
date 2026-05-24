@@ -2,7 +2,8 @@ import express from "express";
 import { createUploader } from "../middlewares/upload.js";
 import * as uploadController from "../controllers/upload.controller.js";
 import authenticateToken from "../middlewares/auth.js";
-const { uploadProfile, uploadHeroImages, uploadResumePdf } = uploadController;
+const { uploadProfile, uploadHeroImages, uploadResumePdf, downloadFileByPath } =
+  uploadController;
 
 const router = express.Router();
 
@@ -31,5 +32,7 @@ router.post(
   portfolioUploader.single("resume"),
   uploadResumePdf,
 );
+
+router.get("/file-download/:filename", downloadFileByPath);
 
 export default router;

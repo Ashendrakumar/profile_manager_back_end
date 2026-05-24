@@ -131,4 +131,70 @@ const uploadResumePdf = async (req, res) => {
   }
 };
 
-export { uploadProfile, uploadHeroImages, uploadResumePdf };
+const downloadResume = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("resume");
+
+    if (!user || !user.resume) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not found",
+      });
+    }
+
+    const resumePath = `${process.cwd()}/src${user.resume}`;
+    
+    // Set proper download headers
+    res.setHeader("Content-Disposition", `attachment; filename="${user.resume.split("/").pop()}"`);
+    res.setHeader("Content-Type", "application/pdf");
+    
+    res.download(resumePath, (err) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to download resume",
+          error: err.message,
+        });
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
+const downloadFileByPath = (req, res) => {
+  try {
+    const resumePath = req.user.resume;
+   const  resumeDownloadUrl = getDownloadUrl(user.resume),
+    if (!resumePath || !resumeDownloadUrl) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not found",
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: "File downloaded successfully",
+        fileLink: resumeDownloadUrl,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getDownloadUrl = (filePath) => {
+  if (!filePath) return null;
+  const baseUrl = process.env.BASE_URL || "http://localhost:10000";
+  return `${baseUrl}${filePath}`;
+};
+
+export { uploadProfile, uploadHeroImages, uploadResumePdf, downloadFileByPath , downloadResume };

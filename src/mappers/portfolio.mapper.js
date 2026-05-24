@@ -1,3 +1,5 @@
+// import config from "../config/config";
+
 const links = [
   { label: "About", url: "/about" },
   { label: "Education", url: "/education" },
@@ -66,8 +68,8 @@ const mapUserToPortfolio = (user) => {
     },
 
     resumeData: {
-      resumeLink: "",
-      downloadLink: "",
+      resumeLink: `/assets/resume/${user.username}-Resume.pdf`,
+      downloadLink: `${user.resume}`,
       downloadText: "Resume",
       downloadIcon: "fa fa-download",
       resumeName: `${user.username}-Resume`,

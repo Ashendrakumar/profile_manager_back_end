@@ -1,18 +1,33 @@
 import User from "../models/User.js";
 
+// ==================== Helper Functions ====================
+
+// Get full download URL
+const getDownloadUrl = (filePath) => {
+  if (!filePath) return null;
+  const baseUrl = process.env.BASE_URL || "http://localhost:10000";
+  return `${baseUrl}${filePath}`;
+};
+
 // ==================== Contact Details ====================
 
 // Get contact details
 const getContactDetails = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select("email contactDetails");
+    const user = await User.findById(userId).select(
+      "email contactDetails resume profileImage",
+    );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
     const personContact = {
       email: user.email,
+      resume: user.resume,
+      
+      profileImage: user.profileImage,
+      profileImageUrl: getDownloadUrl(user.profileImage),
       ...(user.contactDetails?.toObject?.() || user.contactDetails || null),
     };
     res.json({ contactDetails: personContact });
