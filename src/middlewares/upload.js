@@ -16,7 +16,10 @@ const createFolder = (folderPath) => {
 };
 
 // Reusable uploader
-export const createUploader = ({ folder = "common" }) => {
+export const createUploader = ({
+  folder = "common",
+  allowedFileTypes = "images",
+}) => {
   const uploadPath = path.join(__dirname, `../uploads/${folder}`);
 
   createFolder(uploadPath);
@@ -35,20 +38,35 @@ export const createUploader = ({ folder = "common" }) => {
     },
   });
 
-  const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp/;
+  // Define allowed file types
+  const fileTypeRules = {
+    images: {
+      extensions: /jpeg|jpg|png|webp/,
+      mimeTypes: /image\/(jpeg|jpg|png|webp)/,
+      errorMsg: "Only image files are allowed (jpeg, jpg, png, webp)",
+    },
+    documents: {
+      extensions: /pdf|doc|docx/,
+      mimeTypes:
+        /application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/,
+      errorMsg: "Only document files are allowed (pdf, doc, docx)",
+    },
+  };
 
-    const extName = allowedTypes.test(
+  const currentRules = fileTypeRules[allowedFileTypes] || fileTypeRules.images;
+
+  const fileFilter = (req, file, cb) => {
+    const extName = currentRules.extensions.test(
       path.extname(file.originalname).toLowerCase(),
     );
 
-    const mimeType = allowedTypes.test(file.mimetype);
+    const mimeType = currentRules.mimeTypes.test(file.mimetype);
 
     if (extName && mimeType) {
       return cb(null, true);
     }
 
-    cb(new Error("Only image files are allowed"));
+    cb(new Error(currentRules.errorMsg));
   };
 
   return multer({

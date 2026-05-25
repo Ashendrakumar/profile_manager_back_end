@@ -1,8 +1,12 @@
+// import config from "../config/config";
+
 const links = [
   { label: "About", url: "/about" },
-  { label: "Projects", url: "/projects" },
-  { label: "Contact", url: "/contact" },
+  { label: "Education", url: "/education" },
   { label: "Experience", url: "/experience" },
+  { label: "Projects", url: "/projects" },
+  { label: "Skills", url: "/skills" },
+  { label: "Contact", url: "/contact" },
 ];
 
 const mapUserToPortfolio = (user) => {
@@ -12,13 +16,14 @@ const mapUserToPortfolio = (user) => {
     projectNavbarData: {
       projectName: user.username || "",
       projectOptionName: "",
-      profileImage: "/assets/img/profile-pic.jpg",
+      profileImage: user.profileImage || "",
       projectNavLink: links,
     },
 
     contactData: {
       title: "Contact",
-      sub_title: "Get in touch with me",
+      sub_title:
+        "Feel free to connect for opportunities, collaborations, or any further information.",
       fName: user.username || "",
       lName: "",
       role:
@@ -42,7 +47,7 @@ const mapUserToPortfolio = (user) => {
           title: "Address",
           displayName: `${a.city}, ${a.state}, ${a.country}`,
           link: "#",
-          icon: "fa-map-marker-alt",
+          icon: "fa fa-map-marker-alt",
         })),
       ],
 
@@ -57,22 +62,38 @@ const mapUserToPortfolio = (user) => {
       title: "About",
       description: user.about || "",
       "sub-description": "",
-      image: "/assets/img/profile-pic.jpg",
+      image: user.profileImage || "",
       "more-info": "Read More",
+      more_details: {},
+    },
 
-      more_details: {
-        organizations:
-          user.experience?.map((exp) => ({
-            name: exp.companyName,
-            code: exp.companyName,
-            from: exp.startDate?.getFullYear()?.toString(),
-            to: exp.isCurrentlyWorking
-              ? "Present"
-              : exp.endDate?.getFullYear()?.toString(),
-            image: "/assets/images/about.jpg",
-            link: "#",
+    resumeData: {
+      resumeLink: `${user.resume}`,
+      downloadLink: `${user.resume}`,
+      downloadText: "Resume",
+      downloadIcon: "fa fa-download",
+      resumeName: `${user.username}-Resume`,
+      resumeHeading: "Resume",
+
+      educationData: {
+        title: "Education",
+        sub_title:
+          "Knowledge, learning, and continuous improvement that build a strong foundation for future success.",
+        educationItems:
+          user.education?.map((edu) => ({
+            title: edu.standard,
+            institution: edu.institution,
+            date: edu.passingYear?.toString(),
+            location: "",
+            details: edu.specialization || "",
+            percentage: edu.grade || "",
           })) || [],
+      },
 
+      projectData: {
+        title: "Featured Projects",
+        sub_title:
+          "A showcase of meaningful work, creative ideas, and practical achievements delivered with passion.",
         projects:
           user.projects?.map((p) => ({
             projectImg: "/assets/img/projects/default.png",
@@ -93,33 +114,11 @@ const mapUserToPortfolio = (user) => {
             },
           })) || [],
       },
-    },
-
-    resumeData: {
-      resumeLink: "",
-      downloadLink: "",
-      downloadText: "Download Resume",
-      downloadIcon: "fa fa-download",
-      resumeName: `${user.username}-Resume`,
-      resumeHeading: "Resume",
-
-      educationData: {
-        title: "Education",
-        sub_title: "My Education",
-        educationItems:
-          user.education?.map((edu) => ({
-            title: edu.standard,
-            institution: edu.institution,
-            date: edu.passingYear?.toString(),
-            location: "",
-            details: edu.specialization || "",
-            percentage: edu.grade || "",
-          })) || [],
-      },
 
       experienceData: {
-        title: "Experience",
-        sub_title: "My Experience",
+        title: "Professional Experience",
+        sub_title:
+          "A journey of growth, dedication, and valuable contributions across different roles and responsibilities.",
         experienceItems:
           user.experience?.map((exp) => ({
             jobRole: exp.role,
@@ -137,12 +136,13 @@ const mapUserToPortfolio = (user) => {
       },
 
       skillsData: {
-        title: "Technical Skills",
-        sub_title: "My Skills",
+        title: "Technical Expertise",
+        sub_title:
+          "Skills, tools, and capabilities developed through hands-on experience and continuous learning.",
         skillItems:
           user.skills?.map((s) => ({
             name: s.name,
-            icon: "fa fa-code",
+            icon: `${s?.name?.toLowerCase()?.trim()}`,
             level: mapSkillLevel(s.level),
           })) || [],
       },
@@ -157,7 +157,7 @@ const mapUserToPortfolio = (user) => {
       user.contactDetails?.socialLinks?.map((s) => ({
         name: s.platform,
         link: s.url,
-        icon: "fab fa-linkedin",
+        icon: `fab fa-${s.platform?.toLowerCase()?.trim()}`,
         color: "#000",
       })) || [],
   };

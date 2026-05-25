@@ -13,6 +13,10 @@ const heroUpload = createUploader({
   folder: "heroes",
 });
 
+const portfolioUpload = createUploader({
+  folder: "portfolios",
+});
+
 // ===============================
 // Single Profile Upload
 // ===============================
@@ -39,9 +43,11 @@ const uploadProfile = async (req, res) => {
     const userId = req.user.userId;
     // Relative image path
     const profileImage = `/uploads/profiles/${req.file.filename}`;
-    const updatedUser = User.findByIdAndUpdate(userId, {
-      profileImage: profileImage,
-    });
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profileImage: profileImage },
+      { new: true },
+    );
 
     return res.status(200).json({
       success: true,
@@ -93,4 +99,111 @@ const uploadHeroImages = async (req, res) => {
   }
 };
 
-export { uploadProfile, uploadHeroImages };
+const uploadResumePdf = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Resume PDF is required",
+      });
+    }
+
+    const userId = req.user.userId;
+    // Relative file path
+    const resumePath = `/uploads/portfolios/${req.file.filename}`;
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { resume: resumePath },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Resume uploaded successfully",
+      file: req.file,
+      resume: updatedUser.resume,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const downloadResume = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("resume");
+
+    if (!user || !user.resume) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not found",
+      });
+    }
+
+    const resumePath = `${process.cwd()}/src${user.resume}`;
+
+    // Set proper download headers
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${user.resume.split("/").pop()}"`,
+    );
+    res.setHeader("Content-Type", "application/pdf");
+
+    res.download(resumePath, (err) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to download resume",
+          error: err.message,
+        });
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const downloadFileByPath = (req, res) => {
+  try {
+    const resumePath = req.user.resume;
+    const resumeDownloadUrl = getDownloadUrl(user.resume);
+
+    if (!resumePath || !resumeDownloadUrl) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not found",
+      });
+    } else {
+      return res.status(200).json({
+        success: true,
+        message: "File downloaded successfully",
+        fileLink: resumeDownloadUrl,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const getDownloadUrl = (filePath) => {
+  if (!filePath) return null;
+  const baseUrl = process.env.BASE_URL || "http://localhost:10000";
+  return `${baseUrl}${filePath}`;
+};
+
+export {
+  uploadProfile,
+  uploadHeroImages,
+  uploadResumePdf,
+  downloadFileByPath,
+  downloadResume,
+};
