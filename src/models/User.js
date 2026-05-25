@@ -132,6 +132,7 @@ const PortfolioSchema = new mongoose.Schema(
       type: String,
       sparse: true,
       trim: true,
+      default: "", // if link is empty then isGenerated should be false
     },
     isGenerated: {
       type: Boolean,

@@ -70,8 +70,8 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         portfolio: {
-          link: user.portfolio.link,
-          isGenerated: user.portfolio.isGenerated,
+          link: user.portfolio?.link || "",
+          isGenerated: user.portfolio?.isGenerated || false,
         },
       },
     });
