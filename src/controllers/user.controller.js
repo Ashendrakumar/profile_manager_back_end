@@ -44,7 +44,7 @@ const registerUser = async (req, res) => {
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email }).select("-portfolio");
+    const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -70,8 +70,8 @@ const loginUser = async (req, res) => {
         email: user.email,
         role: user.role,
         portfolio: {
-          link: user.portfolio.link,
-          isGenerated: user.portfolio.isGenerated,
+          link: user.portfolio?.link || "",
+          isGenerated: user.portfolio?.isGenerated || false,
         },
       },
     });
