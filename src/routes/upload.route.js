@@ -11,27 +11,32 @@ const router = express.Router();
 router.use(authenticateToken);
 
 // Create uploader instances
-const profileUploader = createUploader({ folder: "profiles" });
-const heroUploader = createUploader({ folder: "heroes" });
-const portfolioUploader = createUploader({
+const profileUploader = createUploader({
+  folder: "profiles",
+  allowedFileTypes: "images",
+});
+
+const heroUploader = createUploader({
+  folder: "heroes",
+  allowedFileTypes: "images",
+});
+
+const resumeUploader = createUploader({
   folder: "portfolios",
   allowedFileTypes: "documents", // Allow PDFs, docs
 });
 
+const portfolioUploader = createUploader({
+  folder: "portfolios",
+  allowedFileTypes: "images",
+});
+
 // Routes with middleware
-router.post(
-  "/profile-upload",
-  profileUploader.single("profile"),
-  uploadProfile,
-);
+router.post("/profile-upload", uploadProfile);
 
 router.post("/hero-images", heroUploader.array("heroes", 5), uploadHeroImages);
 
-router.post(
-  "/resume-upload",
-  portfolioUploader.single("resume"),
-  uploadResumePdf,
-);
+router.post("/resume-upload", resumeUploader.single("resume"), uploadResumePdf);
 
 router.get("/file-download/:filename", downloadFileByPath);
 

@@ -1,5 +1,8 @@
 import express from "express";
 import {
+  // Personal Details
+  getPersonalDetails,
+  savePersonalDetails,
   // Contact Details
   getContactDetails,
   updateContactDetails,
@@ -32,6 +35,10 @@ const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken);
+
+// Personal Details routes
+router.get("/personal-details", getPersonalDetails);
+router.post("/save-personal-details", savePersonalDetails);
 
 // Contact Details routes
 router.get("/contact", getContactDetails);

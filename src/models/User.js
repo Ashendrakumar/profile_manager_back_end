@@ -46,6 +46,17 @@ const ContactDetailsSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Personal Details Schema
+const PersonalDetailsSchema = new mongoose.Schema(
+  {
+    firstName: { type: String, default: "" },
+    lastName: { type: String, default: "" },
+    profileName: { type: String, default: "" },
+    jobRole: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 // Education Schema
 const EducationSchema = new mongoose.Schema(
   {
@@ -148,26 +159,47 @@ const UserSchema = new mongoose.Schema(
       required: true,
     },
     // Profile sections
+    personalDetails: { type: PersonalDetailsSchema },
     contactDetails: { type: ContactDetailsSchema },
     education: [EducationSchema],
     experience: [ExperienceSchema],
     projects: [ProjectSchema],
     skills: [SkillSchema],
-    portfolio: {
-      type: PortfolioSchema,
-    },
+    portfolio: { type: PortfolioSchema },
     profileImage: { type: String, default: "" },
     resume: { type: String, default: "" },
   },
   { timestamps: true },
 );
 
-// Pre-save hook to hash passwords
+// Pre-save hook to hash passwords and auto-populate personal details
 UserSchema.pre("save", async function () {
-  if (!this.isModified("password")) return;
+  // Hash password if modified
+  if (this.isModified("password")) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+  // Auto-populate firstName from username if not set
+  if (
+    !this.personalDetails?.firstName ||
+    this.personalDetails.firstName === ""
+  ) {
+    if (!this.personalDetails) {
+      this.personalDetails = {};
+    }
+    this.personalDetails.firstName = this.username;
+  }
+
+  // Auto-populate jobRole from latest experience if experience exists
+  if (this.experience && this.experience.length > 0) {
+    if (!this.personalDetails) {
+      this.personalDetails = {};
+    }
+    // Get the latest experience (most recent by default, or the last in array)
+    const latestExperience = this.experience[this.experience.length - 1];
+    this.personalDetails.jobRole = latestExperience.role || "";
+  }
 });
 
 // Optional: helper method for login

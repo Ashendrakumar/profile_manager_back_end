@@ -9,6 +9,86 @@ const getDownloadUrl = (filePath) => {
   return `${baseUrl}${filePath}`;
 };
 
+// ==================== Personal Details ====================
+
+// Get personal details
+const getPersonalDetails = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select(
+      "personalDetails profileImage resume",
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const personalDetails = {
+      firstName: user.personalDetails?.firstName || "",
+      lastName: user.personalDetails?.lastName || "",
+      profileName: user.personalDetails?.profileName || "",
+      jobRole: user.personalDetails?.jobRole || "",
+      profileImage: user.profileImage || "",
+      resume: user.resume || "",
+      // profileImageUrl: getDownloadUrl(user.profileImage),
+      // resumeUrl: getDownloadUrl(user.resume),
+    };
+
+    res.json({ personalDetails });
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to fetch personal details",
+      error: err.message,
+    });
+  }
+};
+
+// Save personal details
+const savePersonalDetails = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { firstName, lastName, profileName, jobRole } = req.body;
+
+    const updateData = {};
+    if (firstName !== undefined)
+      updateData["personalDetails.firstName"] = firstName;
+    if (lastName !== undefined)
+      updateData["personalDetails.lastName"] = lastName;
+    if (profileName !== undefined)
+      updateData["personalDetails.profileName"] = profileName;
+    if (jobRole !== undefined) updateData["personalDetails.jobRole"] = jobRole;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $set: updateData },
+      { new: true, runValidators: true },
+    ).select("personalDetails profileImage resume");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      message: "Personal details saved successfully",
+      personalDetails: {
+        firstName: user.personalDetails?.firstName || "",
+        lastName: user.personalDetails?.lastName || "",
+        profileName: user.personalDetails?.profileName || "",
+        jobRole: user.personalDetails?.jobRole || "",
+        profileImage: user.profileImage || "",
+        // profileImageUrl: getDownloadUrl(user.profileImage),
+        resume: user.resume || "",
+        // resumeUrl: getDownloadUrl(user.resume),
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      message: "Failed to save personal details",
+      error: err.message,
+    });
+  }
+};
+
 // ==================== Contact Details ====================
 
 // Get contact details
@@ -25,7 +105,7 @@ const getContactDetails = async (req, res) => {
     const personContact = {
       email: user.email,
       resume: user.resume,
-      
+
       profileImage: user.profileImage,
       profileImageUrl: getDownloadUrl(user.profileImage),
       ...(user.contactDetails?.toObject?.() || user.contactDetails || null),
@@ -537,6 +617,9 @@ const deleteSkill = async (req, res) => {
 };
 
 export {
+  // Personal Details
+  getPersonalDetails,
+  savePersonalDetails,
   // Contact Details
   getContactDetails,
   updateContactDetails,

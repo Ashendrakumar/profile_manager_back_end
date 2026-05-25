@@ -13,6 +13,11 @@ const heroUpload = createUploader({
   folder: "heroes",
 });
 
+const resumeUpload = createUploader({
+  folder: "portfolios",
+  allowedFileTypes: "documents",
+});
+
 const portfolioUpload = createUploader({
   folder: "portfolios",
 });
@@ -24,7 +29,7 @@ const portfolioUpload = createUploader({
 const uploadProfile = async (req, res) => {
   try {
     await new Promise((resolve, reject) => {
-      profileUpload.single("profile")(req, res, (err) => {
+      profileUpload.any()(req, res, (err) => {
         if (err) {
           return reject(err);
         }
@@ -33,7 +38,10 @@ const uploadProfile = async (req, res) => {
       });
     });
 
-    if (!req.file) {
+    // Find the profile file from all files uploaded
+    const profileFile = req.files?.find((f) => f.fieldname === "resume");
+
+    if (!profileFile) {
       return res.status(400).json({
         success: false,
         message: "Profile image is required",
@@ -42,7 +50,7 @@ const uploadProfile = async (req, res) => {
 
     const userId = req.user.userId;
     // Relative image path
-    const profileImage = `/uploads/profiles/${req.file.filename}`;
+    const profileImage = `/uploads/profiles/${profileFile.filename}`;
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { profileImage: profileImage },
@@ -52,7 +60,7 @@ const uploadProfile = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Profile uploaded successfully",
-      file: req.file,
+      file: profileFile,
       profileImage: updatedUser.profileImage,
     });
   } catch (error) {
