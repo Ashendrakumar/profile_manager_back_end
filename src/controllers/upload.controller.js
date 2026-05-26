@@ -28,26 +28,14 @@ const portfolioUpload = createUploader({
 
 const uploadProfile = async (req, res) => {
   try {
-    await new Promise((resolve, reject) => {
-      profileUpload.any()(req, res, (err) => {
-        if (err) {
-          return reject(err);
-        }
-
-        resolve();
-      });
-    });
-
-    // Find the profile file from all files uploaded
-    const profileFile = req.files?.find((f) => f.fieldname === "resume");
-
-    if (!profileFile) {
+    if (!req.file) {
       return res.status(400).json({
         success: false,
         message: "Profile image is required",
       });
     }
 
+    const profileFile = req.file;
     const userId = req.user.userId;
     // Relative image path
     const profileImage = `/uploads/profiles/${profileFile.filename}`;

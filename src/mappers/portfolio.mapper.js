@@ -11,10 +11,11 @@ const links = [
 
 const mapUserToPortfolio = (user) => {
   if (!user) return null;
+  const name = user.personalDetails?.profileName || user.username || "";
 
   return {
     projectNavbarData: {
-      projectName: user.username || "",
+      projectName: name,
       projectOptionName: "",
       profileImage: user.profileImage || "",
       projectNavLink: links,
@@ -24,17 +25,15 @@ const mapUserToPortfolio = (user) => {
       title: "Contact",
       sub_title:
         "Feel free to connect for opportunities, collaborations, or any further information.",
-      fName: user.username || "",
-      lName: "",
-      role:
-        user.experience?.[user.experience?.length - 1]?.role ||
-        "Software Engineer",
+      fName: name,
+      role: user.personalDetails?.jobRole || "Software Engineer",
 
       contact: [
         {
           title: "Email",
           displayName: user.email,
-          link: `mailto:${user.email}`,
+          link: `mailto:${user.email}?subject=${encodeURIComponent(`${name} : Contact Form Portfolio` || "Inquiry")}
+          ?body=${encodeURIComponent("Hello " + name + ",\n\nI would like to connect with you regarding...")}`,
           icon: "fa fa-envelope",
         },
         ...(user.contactDetails?.phones || []).map((p) => ({
@@ -43,28 +42,23 @@ const mapUserToPortfolio = (user) => {
           link: `tel:${p.number}`,
           icon: "fa fa-mobile",
         })),
+        ...(user.contactDetails?.phones || []).map((p) => ({
+          title: "WhatsApp",
+          displayName: p.number,
+          link: `https://wa.me/${p.number}`,
+          icon: "fa fa-whatsapp",
+        })),
         ...(user.contactDetails?.addresses || []).map((a) => ({
           title: "Address",
           displayName: `${a.city}, ${a.state}, ${a.country}`,
-          link: "#",
+          link:
+            "google.com/maps?q=" +
+            encodeURIComponent(
+              `${a.street}, ${a.city}, ${a.state}, ${a.country}`,
+            ),
           icon: "fa fa-map-marker-alt",
         })),
       ],
-
-      contactFormSection: {
-        title: "Contact me",
-        image: "/assets/img/contact-section.jpeg",
-        sub_title: "Feel free to connect",
-      },
-    },
-
-    aboutData: {
-      title: "About",
-      description: user.about || "",
-      "sub-description": "",
-      image: user.profileImage || "",
-      "more-info": "Read More",
-      more_details: {},
     },
 
     resumeData: {
@@ -96,7 +90,7 @@ const mapUserToPortfolio = (user) => {
           "A showcase of meaningful work, creative ideas, and practical achievements delivered with passion.",
         projects:
           user.projects?.map((p) => ({
-            projectImg: "/assets/img/projects/default.png",
+            projectImg: "",
             projectOrg: "",
             projectLink: p.projectUrl || "#",
             name: p.title,
@@ -123,8 +117,8 @@ const mapUserToPortfolio = (user) => {
           user.experience?.map((exp) => ({
             jobRole: exp.role,
             org_title: exp.companyName,
-            orgLogo: "/assets/img/default.png",
-            org_link: "#",
+            orgLogo: "",
+            org_link: "",
             date: `${exp.startDate?.toLocaleDateString()} - ${
               exp.isCurrentlyWorking
                 ? "Present"

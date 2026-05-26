@@ -1,27 +1,44 @@
-import swaggerAutogen from "swagger-autogen";
+import swaggerJsdoc from "swagger-jsdoc";
 
-const doc = {
-  info: {
-    title: "Node APIs",
-    description: "API documentation using swagger-autogen",
-    version: "1.0.0",
-  },
-  host: "localhost:8001",
-  schemes: ["http"],
-  components: {
-    securitySchemes: {
-      bearerAuth: {
-        type: "http",
-        scheme: "bearer",
-        bearerFormat: "JWT",
-        description: "Enter JWT token",
+const options = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Profile Manager API",
+      version: "1.0.0",
+      description: "Node APIs for profile manager",
+    },
+    servers: [
+      {
+        url: "http://localhost:8001",
+        description: "Development server",
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Enter JWT token",
+        },
       },
     },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
   },
-  // Remove global security - apply per route instead
+  apis: [
+    "./src/routes/users.route.js",
+    "./src/routes/posts.route.js",
+    "./src/routes/profile.route.js",
+    "./src/routes/portfolio.route.js",
+    "./src/routes/upload.route.js",
+  ],
 };
 
-const outputFile = "./swagger-output.json";
-const endpointsFiles = ["./src/app.js"];
+const specs = swaggerJsdoc(options);
 
-swaggerAutogen(outputFile, endpointsFiles, doc);
+export default specs;

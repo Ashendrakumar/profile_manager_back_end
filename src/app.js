@@ -13,9 +13,7 @@ const __dirname = path.dirname(__filename);
 
 // Swagger setup
 import swaggerUi from "swagger-ui-express";
-import swaggerFile from "./swagger-output.json" with { type: "json" };
-
-// import swaggerFile from "./swagger-output.json" assert { type: "json" };
+import swaggerSpecs from "./swagger-new.js";
 
 const app = express();
 
@@ -41,7 +39,7 @@ app.get("/api", (req, res) => {
 app.use("/api", router);
 
 // Swagger route
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Global error handler (last)
 app.use(errorHandler);
