@@ -46,13 +46,13 @@ const mapUserToPortfolio = (user) => {
           title: "WhatsApp",
           displayName: p.number,
           link: `https://wa.me/${p.number}`,
-          icon: "fa fa-whatsapp",
+          icon: "fa fa-brands fa-whatsapp",
         })),
         ...(user.contactDetails?.addresses || []).map((a) => ({
           title: "Address",
           displayName: `${a.city}, ${a.state}, ${a.country}`,
           link:
-            "google.com/maps?q=" +
+            "https://www.google.com/maps?q=" +
             encodeURIComponent(
               `${a.street}, ${a.city}, ${a.state}, ${a.country}`,
             ),
