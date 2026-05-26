@@ -59,6 +59,18 @@ const mapUserToPortfolio = (user) => {
           icon: "fa fa-map-marker-alt",
         })),
       ],
+
+      contactFormSection: {
+        title: "Contact Me",
+        image: "",
+        sub_title:
+          "Feel free to connect for opportunities, collaborations, or any further information.",
+      },
+    },
+
+    aboutData: {
+      title: name,
+      description: user.personalDetails?.profileDescription || "",
     },
 
     resumeData: {

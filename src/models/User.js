@@ -52,6 +52,7 @@ const PersonalDetailsSchema = new mongoose.Schema(
     firstName: { type: String, default: "" },
     lastName: { type: String, default: "" },
     profileName: { type: String, default: "" },
+    profileDescription: { type: String, default: "", maxlength: 160 },
     jobRole: { type: String, default: "" },
   },
   { _id: false },
