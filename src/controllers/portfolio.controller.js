@@ -20,6 +20,21 @@ const getUserPortfolioDetails = async (req, res) => {
   }
 };
 
+const getPublicProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const user = await User.findOne({ username }).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ user });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch profile", error: err.message });
+  }
+};
+
 const generatePortfolioLink = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -60,4 +75,5 @@ const generatePortfolioLink = async (req, res) => {
   }
 };
 
-export { getUserPortfolioDetails, generatePortfolioLink };
+export { getUserPortfolioDetails, generatePortfolioLink, getPublicProfile };
+

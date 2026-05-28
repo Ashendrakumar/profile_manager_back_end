@@ -6,6 +6,8 @@ import router from "./routes/index.route.js";
 import errorHandler from "./middlewares/errorHandler.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { requestLogger, errorLogger } from "./middlewares/logger.js";
+import { apiLimiter } from "./middlewares/rateLimiter.js";
 
 // Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +25,12 @@ app.use(cors());
 // Body parser
 app.use(express.json());
 
+// Request logging
+app.use(requestLogger);
+
+// API rate limiting
+app.use("/api/", apiLimiter);
+
 // Test base API route
 app.get("/", (req, res) => {
   res.send("Server is running");
@@ -37,6 +45,9 @@ app.get("/api", (req, res) => {
 
 // Routes
 app.use("/api", router);
+
+// Error logging
+app.use(errorLogger);
 
 // Swagger route
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));

@@ -18,6 +18,24 @@
 
 /**
  * @swagger
+ * /api/portfolio/public/{username}:
+ *   get:
+ *     tags:
+ *       - Portfolio
+ *     summary: Get public user profile
+ *     parameters:
+ *       - name: username
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Public profile details
+ */
+
+/**
+ * @swagger
  * /api/portfolio/generate:
  *   post:
  *     tags:
@@ -34,6 +52,7 @@ import express from "express";
 import {
   getUserPortfolioDetails,
   generatePortfolioLink,
+  getPublicProfile,
 } from "../controllers/portfolio.controller.js";
 import authenticateToken from "../middlewares/auth.js";
 
@@ -41,6 +60,7 @@ const router = express.Router();
 
 // Public routes
 router.get("/:id", getUserPortfolioDetails);
+router.get("/public/:username", getPublicProfile);
 
 // Protected routes
 router.post("/generate", authenticateToken, generatePortfolioLink);

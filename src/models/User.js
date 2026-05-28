@@ -67,6 +67,7 @@ const EducationSchema = new mongoose.Schema(
     passingYear: { type: Number, required: true },
     grade: { type: String }, // e.g., "A+", "3.8/4.0"
     specialization: { type: String }, // e.g., "Computer Science"
+    location: { type: String }, // e.g., "City, Country"
   },
   { timestamps: true },
 );
@@ -76,6 +77,8 @@ const ExperienceSchema = new mongoose.Schema(
   {
     companyName: { type: String, required: true },
     role: { type: String, required: true },
+    location: { type: String, required: true },
+    description: { type: String, required: true },
     startDate: { type: Date, required: true },
     endDate: { type: Date },
     isCurrentlyWorking: { type: Boolean, default: false },

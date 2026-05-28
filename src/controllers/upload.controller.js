@@ -165,23 +165,24 @@ const downloadResume = async (req, res) => {
   }
 };
 
-const downloadFileByPath = (req, res) => {
+const downloadFileByPath = async (req, res) => {
   try {
-    const resumePath = req.user.resume;
-    const resumeDownloadUrl = getDownloadUrl(user.resume);
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("resume");
 
-    if (!resumePath || !resumeDownloadUrl) {
+    if (!user || !user.resume) {
       return res.status(404).json({
         success: false,
         message: "Resume not found",
       });
-    } else {
-      return res.status(200).json({
-        success: true,
-        message: "File downloaded successfully",
-        fileLink: resumeDownloadUrl,
-      });
     }
+
+    const resumeDownloadUrl = getDownloadUrl(user.resume);
+    return res.status(200).json({
+      success: true,
+      message: "File link retrieved successfully",
+      fileLink: resumeDownloadUrl,
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
