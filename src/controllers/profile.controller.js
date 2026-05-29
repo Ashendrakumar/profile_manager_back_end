@@ -30,8 +30,7 @@ const getPersonalDetails = async (req, res) => {
       jobRole: user.personalDetails?.jobRole || "",
       profileImage: user.profileImage || "",
       resume: user.resume || "",
-      // profileImageUrl: getDownloadUrl(user.profileImage),
-      // resumeUrl: getDownloadUrl(user.resume),
+      profileDescription: user.personalDetails?.profileDescription || "",
     };
 
     res.json({ personalDetails });
@@ -47,7 +46,8 @@ const getPersonalDetails = async (req, res) => {
 const savePersonalDetails = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { firstName, lastName, profileName, jobRole } = req.body;
+    const { firstName, lastName, profileName, jobRole, profileDescription } =
+      req.body;
 
     const updateData = {};
     if (firstName !== undefined)
@@ -57,6 +57,8 @@ const savePersonalDetails = async (req, res) => {
     if (profileName !== undefined)
       updateData["personalDetails.profileName"] = profileName;
     if (jobRole !== undefined) updateData["personalDetails.jobRole"] = jobRole;
+    if (profileDescription !== undefined)
+      updateData["personalDetails.profileDescription"] = profileDescription;
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -76,9 +78,7 @@ const savePersonalDetails = async (req, res) => {
         profileName: user.personalDetails?.profileName || "",
         jobRole: user.personalDetails?.jobRole || "",
         profileImage: user.profileImage || "",
-        // profileImageUrl: getDownloadUrl(user.profileImage),
-        resume: user.resume || "",
-        // resumeUrl: getDownloadUrl(user.resume),
+        profileDescription: user.personalDetails?.profileDescription || "",
       },
     });
   } catch (err) {
