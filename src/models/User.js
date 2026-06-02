@@ -76,11 +76,13 @@ const ExperienceSchema = new mongoose.Schema(
   {
     companyName: { type: String, required: true },
     role: { type: String, required: true },
+    roleDescription: { type: String },
     startDate: { type: Date, required: true },
     endDate: { type: Date },
     isCurrentlyWorking: { type: Boolean, default: false },
     responsibilities: [{ type: String }],
     technologiesUsed: [{ type: String }],
+    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
   },
   { timestamps: true },
 );
@@ -92,18 +94,17 @@ const ProjectSchema = new mongoose.Schema(
     description: { type: String, required: true },
     projectType: {
       type: String,
-      enum: ["personal", "work"],
-      default: "personal",
+      enum: ["Personal", "Professional"],
+      default: "Personal",
     },
-    // if projectType is work then companyName is required
     company: {
       type: String,
       required: function () {
-        return this.projectType === "work";
+        return this.projectType === "Professional";
       },
       sparse: true,
       trim: true,
-    }, // company associated with the project (if work-related) From the list of companies in experience section
+    },
     technologies: [{ type: String }],
     projectUrl: { type: String },
     githubRepo: { type: String },
