@@ -9,6 +9,43 @@ const getDownloadUrl = (filePath) => {
   return `${baseUrl}${filePath}`;
 };
 
+const normalizeCompanyName = (companyName) => {
+  return typeof companyName === "string"
+    ? companyName.trim().toLowerCase()
+    : "";
+};
+
+const getProjectsByCompany = (projects = []) => {
+  const map = new Map();
+
+  for (const project of projects) {
+    if (project.projectType !== "Professional") continue;
+
+    const companyKey = normalizeCompanyName(project.company);
+    if (!companyKey || !project._id || !project.title) continue;
+
+    const projectLinks = map.get(companyKey) || [];
+    projectLinks.push({
+      projectId: project._id.toString(),
+      title: project.title,
+    });
+    map.set(companyKey, projectLinks);
+  }
+
+  return map;
+};
+
+const syncExperienceProjectLinks = (user) => {
+  if (!user?.experience || !user?.projects) return;
+
+  const projectMap = getProjectsByCompany(user.projects);
+
+  user.experience.forEach((exp) => {
+    const companyKey = normalizeCompanyName(exp.companyName);
+    exp.projects = companyKey ? projectMap.get(companyKey) || [] : [];
+  });
+};
+
 // ==================== Personal Details ====================
 
 // Get personal details
@@ -271,24 +308,17 @@ const getExperience = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    // const projectByCompany = new Map();
-    // for (const project of user.projects) {
-    //   // only consider work projects for experience section
-    //   if (project.projectType !== "work") continue;
-    //   if (!projectByCompany.has(project.company)) {
-    //     projectByCompany.set(project.company, []);
-    //   }
-    //   projectByCompany.get(project.company).push(project);
-    // }
 
-    // const UserExperience = user.experience.map((exp) => {
-    //   return {
-    //     ...exp.toObject(),
-    //     projects: projectByCompany.get(exp.companyName) || [],
-    //   };
-    // });
+    const projectMap = getProjectsByCompany(user.projects || []);
+    const experienceWithProjects = (user.experience || []).map((exp) => {
+      const companyKey = normalizeCompanyName(exp.companyName);
+      return {
+        ...exp.toObject(),
+        projects: companyKey ? projectMap.get(companyKey) || [] : [],
+      };
+    });
 
-    res.json({ experience: user.experience || [] });
+    res.json({ experience: experienceWithProjects });
   } catch (err) {
     res
       .status(500)
@@ -302,15 +332,14 @@ const addExperience = async (req, res) => {
     const userId = req.user.userId;
     const experienceData = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $push: { experience: experienceData } },
-      { new: true, runValidators: true },
-    ).select("experience");
-
+    const user = await User.findById(userId).select("experience projects");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    user.experience.push(experienceData);
+    syncExperienceProjectLinks(user);
+    await user.save();
 
     const newExperience = user.experience[user.experience.length - 1];
     res.status(201).json({
@@ -331,7 +360,9 @@ const updateExperience = async (req, res) => {
     const { experienceId } = req.params;
     const updateData = req.body;
 
-    const user = await User.findOne({ _id: userId });
+    const user = await User.findOne({ _id: userId }).select(
+      "experience projects",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -345,6 +376,7 @@ const updateExperience = async (req, res) => {
     }
 
     Object.assign(user.experience[experienceIndex], updateData);
+    syncExperienceProjectLinks(user);
     await user.save();
 
     res.json({
@@ -430,15 +462,14 @@ const addProject = async (req, res) => {
     const userId = req.user.userId;
     const projectData = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $push: { projects: projectData } },
-      { new: true, runValidators: true },
-    ).select("projects");
-
+    const user = await User.findById(userId).select("projects experience");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    user.projects.push(projectData);
+    syncExperienceProjectLinks(user);
+    await user.save();
 
     const newProject = user.projects[user.projects.length - 1];
     res.status(201).json({
@@ -459,7 +490,9 @@ const updateProject = async (req, res) => {
     const { projectId } = req.params;
     const updateData = req.body;
 
-    const user = await User.findOne({ _id: userId });
+    const user = await User.findOne({ _id: userId }).select(
+      "projects experience",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -473,6 +506,7 @@ const updateProject = async (req, res) => {
     }
 
     Object.assign(user.projects[projectIndex], updateData);
+    syncExperienceProjectLinks(user);
     await user.save();
 
     res.json({
@@ -492,15 +526,19 @@ const deleteProject = async (req, res) => {
     const userId = req.user.userId;
     const { projectId } = req.params;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $pull: { projects: { _id: projectId } } },
-      { new: true },
-    );
-
+    const user = await User.findById(userId).select("projects experience");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    const project = user.projects.id(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    project.remove();
+    syncExperienceProjectLinks(user);
+    await user.save();
 
     res.json({ message: "Project deleted successfully" });
   } catch (err) {

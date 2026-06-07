@@ -82,7 +82,15 @@ const ExperienceSchema = new mongoose.Schema(
     isCurrentlyWorking: { type: Boolean, default: false },
     responsibilities: [{ type: String }],
     technologiesUsed: [{ type: String }],
-    projects: [{ type: mongoose.Schema.Types.ObjectId, ref: "Project" }],
+    projects: [
+      new mongoose.Schema(
+        {
+          projectId: { type: mongoose.Schema.Types.ObjectId, required: true },
+          title: { type: String, required: true },
+        },
+        { _id: false },
+      ),
+    ],
   },
   { timestamps: true },
 );

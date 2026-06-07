@@ -137,7 +137,7 @@ const mapUserToPortfolio = (user) => {
                 : exp.endDate?.toLocaleDateString()
             }`,
             location: "",
-            projectsHandled: exp.technologiesUsed?.length || 0,
+            projectsHandled: exp.projects?.length || 0,
           })) || [],
       },
 
