@@ -46,6 +46,33 @@ const syncExperienceProjectLinks = (user) => {
   });
 };
 
+const syncSkillsWithTechnologies = (user, technologies = []) => {
+  if (!user?.skills || !Array.isArray(technologies)) return;
+
+  const normalizedTechs = technologies
+    .map((tech) => ({
+      normalized: typeof tech === "string" ? tech.trim().toLowerCase() : "",
+      original: tech,
+    }))
+    .filter((t) => t.normalized);
+
+  const existingSkillNames = new Set(
+    user.skills.map((skill) => skill.name.toLowerCase().trim()),
+  );
+
+  for (const tech of normalizedTechs) {
+    if (!existingSkillNames.has(tech.normalized)) {
+      user.skills.push({
+        name: tech.original,
+        category: "Others",
+        level: "ADVANCED",
+        yearsOfExperience: 1,
+      });
+      existingSkillNames.add(tech.normalized);
+    }
+  }
+};
+
 // ==================== Personal Details ====================
 
 // Get personal details
@@ -332,13 +359,16 @@ const addExperience = async (req, res) => {
     const userId = req.user.userId;
     const experienceData = req.body;
 
-    const user = await User.findById(userId).select("experience projects");
+    const user = await User.findById(userId).select(
+      "experience projects skills",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     user.experience.push(experienceData);
     syncExperienceProjectLinks(user);
+    syncSkillsWithTechnologies(user, experienceData.technologiesUsed);
     await user.save();
 
     const newExperience = user.experience[user.experience.length - 1];
@@ -361,7 +391,7 @@ const updateExperience = async (req, res) => {
     const updateData = req.body;
 
     const user = await User.findOne({ _id: userId }).select(
-      "experience projects",
+      "experience projects skills",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -377,6 +407,7 @@ const updateExperience = async (req, res) => {
 
     Object.assign(user.experience[experienceIndex], updateData);
     syncExperienceProjectLinks(user);
+    syncSkillsWithTechnologies(user, updateData.technologiesUsed);
     await user.save();
 
     res.json({
