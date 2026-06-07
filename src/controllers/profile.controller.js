@@ -73,6 +73,94 @@ const syncSkillsWithTechnologies = (user, technologies = []) => {
   }
 };
 
+const calculateProfileCompletion = (user) => {
+  if (!user) return { percentage: 0, completedSections: [] };
+
+  const weights = {
+    personalDetails: 15,
+    contactDetails: 15,
+    education: 10,
+    experience: 15,
+    projects: 10,
+    skills: 10,
+    portfolio: 10,
+    profileImage: 5,
+    resume: 10,
+  };
+
+  const completedSections = [];
+  let totalPercentage = 0;
+
+  // Check Personal Details (15%)
+  const personalDetailsComplete =
+    user.personalDetails?.firstName &&
+    user.personalDetails?.lastName &&
+    user.personalDetails?.jobRole;
+  if (personalDetailsComplete) {
+    completedSections.push("Personal Details");
+    totalPercentage += weights.personalDetails;
+  }
+
+  // Check Contact Details (15%)
+  const contactDetailsComplete =
+    user.email &&
+    user.contactDetails?.phones?.length > 0 &&
+    user.contactDetails?.addresses?.length > 0;
+  if (contactDetailsComplete) {
+    completedSections.push("Contact Details");
+    totalPercentage += weights.contactDetails;
+  }
+
+  // Check Education (10%)
+  if (user.education && user.education.length > 0) {
+    completedSections.push("Education");
+    totalPercentage += weights.education;
+  }
+
+  // Check Experience (15%)
+  if (user.experience && user.experience.length > 0) {
+    completedSections.push("Experience");
+    totalPercentage += weights.experience;
+  }
+
+  // Check Projects (10%)
+  if (user.projects && user.projects.length > 0) {
+    completedSections.push("Projects");
+    totalPercentage += weights.projects;
+  }
+
+  // Check Skills (10%)
+  if (user.skills && user.skills.length > 0) {
+    completedSections.push("Skills");
+    totalPercentage += weights.skills;
+  }
+
+  // Check Portfolio (10%)
+  const portfolioComplete = user.portfolio?.link && user.portfolio.link.trim();
+  if (portfolioComplete) {
+    completedSections.push("Portfolio");
+    totalPercentage += weights.portfolio;
+  }
+
+  // Check Profile Image (5%)
+  if (user.profileImage && user.profileImage.trim()) {
+    completedSections.push("Profile Image");
+    totalPercentage += weights.profileImage;
+  }
+
+  // Check Resume (10%)
+  if (user.resume && user.resume.trim()) {
+    completedSections.push("Resume");
+    totalPercentage += weights.resume;
+  }
+
+  return {
+    percentage: totalPercentage,
+    completedSections,
+    lastCalculatedAt: new Date(),
+  };
+};
+
 // ==================== Personal Details ====================
 
 // Get personal details
@@ -124,15 +212,24 @@ const savePersonalDetails = async (req, res) => {
     if (profileDescription !== undefined)
       updateData["personalDetails.profileDescription"] = profileDescription;
 
-    const user = await User.findByIdAndUpdate(
+    let user = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
       { new: true, runValidators: true },
-    ).select("personalDetails profileImage resume");
+    ).select("personalDetails profileImage resume contactDetails email");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+    await user.save();
 
     res.json({
       message: "Personal details saved successfully",
@@ -144,6 +241,7 @@ const savePersonalDetails = async (req, res) => {
         profileImage: user.profileImage || "",
         profileDescription: user.personalDetails?.profileDescription || "",
       },
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res.status(400).json({
@@ -189,26 +287,38 @@ const updateContactDetails = async (req, res) => {
     const { email, phones, addresses, socialLinks } = req.body;
 
     const updateData = {};
-    if (email !== undefined) updateData["contactDetails.email"] = email;
+    if (email !== undefined) updateData["email"] = email;
     if (phones !== undefined) updateData["contactDetails.phones"] = phones;
     if (addresses !== undefined)
       updateData["contactDetails.addresses"] = addresses;
     if (socialLinks !== undefined)
       updateData["contactDetails.socialLinks"] = socialLinks;
 
-    const user = await User.findByIdAndUpdate(
+    let user = await User.findByIdAndUpdate(
       userId,
       { $set: updateData },
       { new: true, runValidators: true },
-    ).select("contactDetails");
+    ).select(
+      "contactDetails email personalDetails education experience projects skills portfolio profileImage resume",
+    );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+    await user.save();
+
     res.json({
       message: "Contact details updated successfully",
       contactDetails: user.contactDetails,
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res.status(400).json({
@@ -244,20 +354,30 @@ const addEducation = async (req, res) => {
     const userId = req.user.userId;
     const educationData = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $push: { education: educationData } },
-      { new: true, runValidators: true },
-    ).select("education");
-
+    let user = await User.findById(userId).select(
+      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    user.education.push(educationData);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
+    await user.save();
 
     const newEducation = user.education[user.education.length - 1];
     res.status(201).json({
       message: "Education added successfully",
       education: newEducation,
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -273,7 +393,9 @@ const updateEducation = async (req, res) => {
     const { educationId } = req.params;
     const updateData = req.body;
 
-    const user = await User.findOne({ _id: userId });
+    let user = await User.findOne({ _id: userId }).select(
+      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -287,11 +409,21 @@ const updateEducation = async (req, res) => {
     }
 
     Object.assign(user.education[educationIndex], updateData);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
     res.json({
       message: "Education updated successfully",
       education: user.education[educationIndex],
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -306,17 +438,38 @@ const deleteEducation = async (req, res) => {
     const userId = req.user.userId;
     const { educationId } = req.params;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $pull: { education: { _id: educationId } } },
-      { new: true },
+    let user = await User.findById(userId).select(
+      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume",
     );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "Education deleted successfully" });
+    const educationIndex = user.education.findIndex(
+      (edu) => edu._id.toString() === educationId,
+    );
+
+    if (educationIndex === -1) {
+      return res.status(404).json({ message: "Education not found" });
+    }
+
+    user.education.splice(educationIndex, 1);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
+    await user.save();
+
+    res.json({
+      message: "Education deleted successfully",
+      profileCompletion: user.profileCompletion,
+    });
   } catch (err) {
     res
       .status(400)
@@ -359,8 +512,8 @@ const addExperience = async (req, res) => {
     const userId = req.user.userId;
     const experienceData = req.body;
 
-    const user = await User.findById(userId).select(
-      "experience projects skills",
+    let user = await User.findById(userId).select(
+      "experience projects skills personalDetails contactDetails email education projects skills portfolio profileImage resume",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -369,6 +522,15 @@ const addExperience = async (req, res) => {
     user.experience.push(experienceData);
     syncExperienceProjectLinks(user);
     syncSkillsWithTechnologies(user, experienceData.technologiesUsed);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
     const newExperience = user.experience[user.experience.length - 1];
@@ -390,8 +552,8 @@ const updateExperience = async (req, res) => {
     const { experienceId } = req.params;
     const updateData = req.body;
 
-    const user = await User.findOne({ _id: userId }).select(
-      "experience projects skills",
+    let user = await User.findOne({ _id: userId }).select(
+      "experience projects skills personalDetails contactDetails email education portfolio profileImage resume",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -408,11 +570,21 @@ const updateExperience = async (req, res) => {
     Object.assign(user.experience[experienceIndex], updateData);
     syncExperienceProjectLinks(user);
     syncSkillsWithTechnologies(user, updateData.technologiesUsed);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
     res.json({
       message: "Experience updated successfully",
       experience: user.experience[experienceIndex],
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -427,17 +599,38 @@ const deleteExperience = async (req, res) => {
     const userId = req.user.userId;
     const { experienceId } = req.params;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $pull: { experience: { _id: experienceId } } },
-      { new: true },
+    let user = await User.findById(userId).select(
+      "experience projects skills personalDetails contactDetails email education portfolio profileImage resume",
     );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "Experience deleted successfully" });
+    const experienceIndex = user.experience.findIndex(
+      (exp) => exp._id.toString() === experienceId,
+    );
+
+    if (experienceIndex === -1) {
+      return res.status(404).json({ message: "Experience not found" });
+    }
+
+    user.experience.splice(experienceIndex, 1);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
+    await user.save();
+
+    res.json({
+      message: "Experience deleted successfully",
+      profileCompletion: user.profileCompletion,
+    });
   } catch (err) {
     res
       .status(400)
@@ -493,19 +686,32 @@ const addProject = async (req, res) => {
     const userId = req.user.userId;
     const projectData = req.body;
 
-    const user = await User.findById(userId).select("projects experience");
+    let user = await User.findById(userId).select(
+      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     user.projects.push(projectData);
     syncExperienceProjectLinks(user);
+    syncSkillsWithTechnologies(user, projectData.technologies);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
     const newProject = user.projects[user.projects.length - 1];
     res.status(201).json({
       message: "Project added successfully",
       project: newProject,
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -521,8 +727,8 @@ const updateProject = async (req, res) => {
     const { projectId } = req.params;
     const updateData = req.body;
 
-    const user = await User.findOne({ _id: userId }).select(
-      "projects experience",
+    let user = await User.findOne({ _id: userId }).select(
+      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -538,11 +744,22 @@ const updateProject = async (req, res) => {
 
     Object.assign(user.projects[projectIndex], updateData);
     syncExperienceProjectLinks(user);
+    syncSkillsWithTechnologies(user, updateData.technologies);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
     res.json({
       message: "Project updated successfully",
       project: user.projects[projectIndex],
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -557,21 +774,38 @@ const deleteProject = async (req, res) => {
     const userId = req.user.userId;
     const { projectId } = req.params;
 
-    const user = await User.findById(userId).select("projects experience");
+    let user = await User.findById(userId).select(
+      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const project = user.projects.id(projectId);
-    if (!project) {
+    const projectIndex = user.projects.findIndex(
+      (proj) => proj._id.toString() === projectId,
+    );
+
+    if (projectIndex === -1) {
       return res.status(404).json({ message: "Project not found" });
     }
 
-    project.remove();
+    user.projects.splice(projectIndex, 1);
     syncExperienceProjectLinks(user);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
-    res.json({ message: "Project deleted successfully" });
+    res.json({
+      message: "Project deleted successfully",
+      profileCompletion: user.profileCompletion,
+    });
   } catch (err) {
     res
       .status(400)
@@ -605,20 +839,30 @@ const addSkill = async (req, res) => {
     const userId = req.user.userId;
     const skillData = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $push: { skills: skillData } },
-      { new: true, runValidators: true },
-    ).select("skills");
-
+    let user = await User.findById(userId).select(
+      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    user.skills.push(skillData);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
+    await user.save();
 
     const newSkill = user.skills[user.skills.length - 1];
     res.status(201).json({
       message: "Skill added successfully",
       skill: newSkill,
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -634,7 +878,9 @@ const updateSkill = async (req, res) => {
     const { skillId } = req.params;
     const updateData = req.body;
 
-    const user = await User.findOne({ _id: userId });
+    let user = await User.findOne({ _id: userId }).select(
+      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -648,11 +894,21 @@ const updateSkill = async (req, res) => {
     }
 
     Object.assign(user.skills[skillIndex], updateData);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
     await user.save();
 
     res.json({
       message: "Skill updated successfully",
       skill: user.skills[skillIndex],
+      profileCompletion: user.profileCompletion,
     });
   } catch (err) {
     res
@@ -667,21 +923,74 @@ const deleteSkill = async (req, res) => {
     const userId = req.user.userId;
     const { skillId } = req.params;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $pull: { skills: { _id: skillId } } },
-      { new: true },
+    let user = await User.findById(userId).select(
+      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume",
     );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "Skill deleted successfully" });
+    const skillIndex = user.skills.findIndex(
+      (skill) => skill._id.toString() === skillId,
+    );
+
+    if (skillIndex === -1) {
+      return res.status(404).json({ message: "Skill not found" });
+    }
+
+    user.skills.splice(skillIndex, 1);
+
+    // Recalculate profile completion
+    const completion = calculateProfileCompletion(user);
+    user.profileCompletion = {
+      percentage: completion.percentage,
+      completedSections: completion.completedSections,
+      lastCalculatedAt: completion.lastCalculatedAt,
+    };
+
+    await user.save();
+
+    res.json({
+      message: "Skill deleted successfully",
+      profileCompletion: user.profileCompletion,
+    });
   } catch (err) {
     res
       .status(400)
       .json({ message: "Failed to delete skill", error: err.message });
+  }
+};
+
+// ==================== Profile Completion ====================
+
+const getProfileCompletion = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select(
+      "personalDetails contactDetails education experience projects skills portfolio profileImage resume profileCompletion",
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const completion = calculateProfileCompletion(user);
+
+    res.json({
+      profileCompletion: {
+        percentage: completion.percentage,
+        completedSections: completion.completedSections,
+        totalSections: 9,
+        remainingSections: 9 - completion.completedSections.length,
+        lastCalculatedAt: completion.lastCalculatedAt,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: "Failed to fetch profile completion",
+      error: err.message,
+    });
   }
 };
 
@@ -713,4 +1022,6 @@ export {
   addSkill,
   updateSkill,
   deleteSkill,
+  // Profile Completion
+  getProfileCompletion,
 };

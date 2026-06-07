@@ -379,6 +379,8 @@ import {
   addSkill,
   updateSkill,
   deleteSkill,
+  // Profile Completion
+  getProfileCompletion,
 } from "../controllers/profile.controller.js";
 
 import authenticateToken from "../middlewares/auth.js";
@@ -419,5 +421,8 @@ router.get("/skills", getSkills);
 router.post("/skills", addSkill);
 router.put("/skills/:skillId", updateSkill);
 router.delete("/skills/:skillId", deleteSkill);
+
+// Profile Completion routes
+router.get("/completion", getProfileCompletion);
 
 export default router;

@@ -179,6 +179,20 @@ const UserSchema = new mongoose.Schema(
     portfolio: { type: PortfolioSchema },
     profileImage: { type: String, default: "" },
     resume: { type: String, default: "" },
+    // Profile Completion Tracking
+    profileCompletion: {
+      percentage: {
+        type: Number,
+        default: 0,
+      },
+      completedSections: {
+        type: [String],
+        default: [],
+      },
+      lastCalculatedAt: {
+        type: Date,
+      },
+    },
   },
   { timestamps: true },
 );
