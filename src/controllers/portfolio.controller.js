@@ -20,10 +20,76 @@ const getUserPortfolioDetails = async (req, res) => {
   }
 };
 
+const calculateProfileCompletion = (user) => {
+  if (!user) return 0;
+
+  const weights = {
+    personalDetails: 15,
+    contactDetails: 15,
+    education: 10,
+    experience: 15,
+    projects: 10,
+    skills: 10,
+    portfolio: 10,
+    profileImage: 5,
+    resume: 10,
+  };
+
+  let totalPercentage = 0;
+
+  if (
+    user.personalDetails?.firstName &&
+    user.personalDetails?.lastName &&
+    user.personalDetails?.jobRole
+  ) {
+    totalPercentage += weights.personalDetails;
+  }
+
+  if (
+    user.email &&
+    user.contactDetails?.phones?.length > 0 &&
+    user.contactDetails?.addresses?.length > 0
+  ) {
+    totalPercentage += weights.contactDetails;
+  }
+
+  if (user.education && user.education.length > 0) {
+    totalPercentage += weights.education;
+  }
+
+  if (user.experience && user.experience.length > 0) {
+    totalPercentage += weights.experience;
+  }
+
+  if (user.projects && user.projects.length > 0) {
+    totalPercentage += weights.projects;
+  }
+
+  if (user.skills && user.skills.length > 0) {
+    totalPercentage += weights.skills;
+  }
+
+  if (user.profileImage && user.profileImage.trim()) {
+    totalPercentage += weights.profileImage;
+  }
+
+  if (user.resume && user.resume.trim()) {
+    totalPercentage += weights.resume;
+  }
+
+  return totalPercentage;
+};
+
 const generatePortfolioLink = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select("portfolio username");
+    const user = await User.findById(userId).select(
+      "portfolio username personalDetails contactDetails email education experience projects skills profileImage resume"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     if (user.portfolio?.isGenerated) {
       return res.status(400).json({
@@ -31,6 +97,19 @@ const generatePortfolioLink = async (req, res) => {
         data: {
           link: user.portfolio.link,
           isGenerated: user.portfolio.isGenerated,
+        },
+      });
+    }
+
+    const completionPercentage = calculateProfileCompletion(user);
+
+    if (completionPercentage < 60) {
+      return res.status(400).json({
+        message: `Your profile must be at least 60% complete to generate a portfolio. Currently at ${completionPercentage}%`,
+        data: {
+          completionPercentage,
+          requiredPercentage: 60,
+          isGenerated: false,
         },
       });
     }
@@ -49,8 +128,8 @@ const generatePortfolioLink = async (req, res) => {
     );
 
     res.json({
-      message: "Portfolio link generated",
-      data: { link, isGenerated: true },
+      message: "Portfolio link generated successfully",
+      data: { link, isGenerated: true, completionPercentage },
     });
   } catch (err) {
     res.status(500).json({
