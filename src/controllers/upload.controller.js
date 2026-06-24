@@ -1,5 +1,7 @@
 import { createUploader } from "../middlewares/upload.js";
 import User from "../models/User.js";
+import path from "path";
+import fs from "fs";
 
 // ===============================
 // Upload Configs
@@ -37,13 +39,20 @@ const uploadProfile = async (req, res) => {
 
     const profileFile = req.file;
     const userId = req.user.userId;
-    // Relative image path
     const profileImage = `/uploads/profiles/${profileFile.filename}`;
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profileImage: profileImage },
+      { profileImage },
       { new: true },
     );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -67,10 +76,7 @@ const uploadHeroImages = async (req, res) => {
   try {
     await new Promise((resolve, reject) => {
       heroUpload.array("heroes", 5)(req, res, (err) => {
-        if (err) {
-          return reject(err);
-        }
-
+        if (err) return reject(err);
         resolve();
       });
     });
@@ -95,6 +101,10 @@ const uploadHeroImages = async (req, res) => {
   }
 };
 
+// ===============================
+// Upload Resume PDF
+// ===============================
+
 const uploadResumePdf = async (req, res) => {
   try {
     if (!req.file) {
@@ -105,13 +115,20 @@ const uploadResumePdf = async (req, res) => {
     }
 
     const userId = req.user.userId;
-    // Relative file path
     const resumePath = `/uploads/portfolios/${req.file.filename}`;
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { resume: resumePath },
       { new: true },
     );
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     return res.status(200).json({
       success: true,
@@ -127,6 +144,10 @@ const uploadResumePdf = async (req, res) => {
   }
 };
 
+// ===============================
+// Download Resume (stream file)
+// ===============================
+
 const downloadResume = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -139,17 +160,23 @@ const downloadResume = async (req, res) => {
       });
     }
 
-    const resumePath = `${process.cwd()}/src${user.resume}`;
+    // Build absolute path — adjust base dir if your uploads folder differs
+    const resumePath = path.join(process.cwd(), "src", user.resume);
 
-    // Set proper download headers
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${user.resume.split("/").pop()}"`,
-    );
+    if (!fs.existsSync(resumePath)) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume file not found on disk",
+      });
+    }
+
+    const filename = path.basename(user.resume);
+
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Type", "application/pdf");
 
-    res.download(resumePath, (err) => {
-      if (err) {
+    res.download(resumePath, filename, (err) => {
+      if (err && !res.headersSent) {
         return res.status(500).json({
           success: false,
           message: "Failed to download resume",
@@ -165,23 +192,30 @@ const downloadResume = async (req, res) => {
   }
 };
 
-const downloadFileByPath = (req, res) => {
-  try {
-    const resumePath = req.user.resume;
-    const resumeDownloadUrl = getDownloadUrl(user.resume);
+// ===============================
+// Get Resume Download URL
+// ===============================
 
-    if (!resumePath || !resumeDownloadUrl) {
+const downloadFileByPath = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    // FIX: fetch user from DB, not from req.user (which only has auth payload)
+    const user = await User.findById(userId).select("resume");
+
+    if (!user || !user.resume) {
       return res.status(404).json({
         success: false,
         message: "Resume not found",
       });
-    } else {
-      return res.status(200).json({
-        success: true,
-        message: "File downloaded successfully",
-        fileLink: resumeDownloadUrl,
-      });
     }
+
+    const resumeDownloadUrl = getDownloadUrl(user.resume);
+
+    return res.status(200).json({
+      success: true,
+      message: "File link retrieved successfully",
+      fileLink: resumeDownloadUrl,
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -189,6 +223,10 @@ const downloadFileByPath = (req, res) => {
     });
   }
 };
+
+// ===============================
+// Helper
+// ===============================
 
 const getDownloadUrl = (filePath) => {
   if (!filePath) return null;

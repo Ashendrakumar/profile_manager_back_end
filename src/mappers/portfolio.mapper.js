@@ -103,18 +103,18 @@ const mapUserToPortfolio = (user) => {
         projects:
           user.projects?.map((p) => ({
             projectImg: "",
-            projectOrg: "",
+            projectOrg: p.company || "Personal",
             projectLink: p.projectUrl || "#",
             name: p.title,
             projectHeading: p.title,
-            projectRole: "",
+            projectRole:
+              user.experience.find((exp) => exp.companyName === p.company)
+                ?.role || "",
             teamMembers: "1",
             projectDetail: {
               description: p.description,
               keyFeatures: [],
-              technologiesUsed: {
-                frontend: p.technologies?.join(", "),
-              },
+              technologiesUsed: p.technologies || [],
               challengesSolved: [],
               outcome: "",
             },
