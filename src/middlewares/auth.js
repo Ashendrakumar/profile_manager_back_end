@@ -17,11 +17,13 @@ const authenticateToken = async (req, res, next) => {
     );
     req.user = decoded;
 
-    // Optionally fetch user data and attach to request
+    // Fetch the user; a valid token for a deleted user must not pass, otherwise
+    // controllers that read req.userData (e.g. user.controller) crash with 500.
     const user = await User.findById(decoded.userId).select("-password");
-    if (user) {
-      req.userData = user;
+    if (!user) {
+      return res.status(401).json({ message: "User no longer exists" });
     }
+    req.userData = user;
 
     next();
   } catch (err) {

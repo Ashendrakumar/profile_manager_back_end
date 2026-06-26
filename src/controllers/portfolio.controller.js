@@ -73,7 +73,7 @@ const calculateProfileCompletion = (user) => {
     totalPercentage += weights.profileImage;
   }
 
-  if (user.resume && user.resume.trim()) {
+  if (user.resumes?.length > 0 || (user.resume && user.resume.trim())) {
     totalPercentage += weights.resume;
   }
 
@@ -84,7 +84,7 @@ const generatePortfolioLink = async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId).select(
-      "portfolio username personalDetails contactDetails email education experience projects skills profileImage resume"
+      "portfolio username personalDetails contactDetails email education experience projects skills profileImage resume resumes"
     );
 
     if (!user) {

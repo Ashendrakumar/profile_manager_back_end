@@ -29,7 +29,30 @@ app.get("/", (req, res) => {
 });
 
 // Serve static files - UPLOADS folder Expose to download
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Resume files (under /uploads/portfolios) are forced to download with a
+// Content-Disposition: attachment header. The HTML5 `download` attribute is
+// ignored for cross-origin links on mobile browsers, so this header is what
+// makes "Download Resume" work reliably on phones from the public portfolio.
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"), {
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      const isResume =
+        filePath.includes(`${path.sep}portfolios${path.sep}`) &&
+        [".pdf", ".doc", ".docx"].includes(ext);
+
+      if (isResume) {
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${path.basename(filePath)}"`,
+        );
+      }
+      // Allow cross-origin (portfolio site) to embed/fetch assets.
+      res.setHeader("Access-Control-Allow-Origin", "*");
+    },
+  }),
+);
 
 app.get("/api", (req, res) => {
   res.json({ status: "API is running", version: "1.0.0" });

@@ -1,4 +1,17 @@
-// import config from "../config/config";
+import config from "../config/config.js";
+
+const { baseUrl } = config;
+
+/**
+ * Convert a stored relative upload path (e.g. "/uploads/portfolios/x.pdf")
+ * into an absolute URL pointing at the API host, so cross-origin portfolio
+ * pages (and mobile browsers) can reach and download the file.
+ */
+const toAbsoluteUrl = (filePath) => {
+  if (!filePath) return "";
+  if (/^https?:\/\//i.test(filePath)) return filePath;
+  return `${baseUrl}${filePath.startsWith("/") ? "" : "/"}${filePath}`;
+};
 
 const links = [
   { label: "About", url: "/about" },
@@ -9,15 +22,29 @@ const links = [
   { label: "Contact", url: "/contact" },
 ];
 
+/**
+ * Pick the resume to expose on the portfolio: the one marked primary, falling
+ * back to the most recent resume, then to the legacy single `resume` field.
+ */
+const getPrimaryResumePath = (user) => {
+  const resumes = user.resumes || [];
+  if (resumes.length > 0) {
+    const primary = resumes.find((r) => r.isPrimary) || resumes[resumes.length - 1];
+    return primary.filePath;
+  }
+  return user.resume || "";
+};
+
 const mapUserToPortfolio = (user) => {
   if (!user) return null;
   const name = user.personalDetails?.profileName || user.username || "";
+  const resumePath = getPrimaryResumePath(user);
 
   return {
     projectNavbarData: {
       projectName: name,
       projectOptionName: "",
-      profileImage: user.profileImage || "",
+      profileImage: toAbsoluteUrl(user.profileImage),
       projectNavLink: links,
     },
 
@@ -74,8 +101,8 @@ const mapUserToPortfolio = (user) => {
     },
 
     resumeData: {
-      resumeLink: `${user.resume}`,
-      downloadLink: `${user.resume}`,
+      resumeLink: toAbsoluteUrl(resumePath),
+      downloadLink: toAbsoluteUrl(resumePath),
       downloadText: "Resume",
       downloadIcon: "fa fa-download",
       resumeName: `${user.username}-Resume`,
@@ -108,7 +135,7 @@ const mapUserToPortfolio = (user) => {
             name: p.title,
             projectHeading: p.title,
             projectRole:
-              user.experience.find((exp) => exp.companyName === p.company)
+              user.experience?.find((exp) => exp.companyName === p.company)
                 ?.role || "",
             teamMembers: "1",
             projectDetail: {

@@ -1,13 +1,23 @@
 import User from "../models/User.js";
+import config from "../config/config.js";
 
 // ==================== Helper Functions ====================
 
 // Get full download URL
 const getDownloadUrl = (filePath) => {
   if (!filePath) return null;
-  const baseUrl = process.env.BASE_URL || "http://localhost:10000";
-  return `${baseUrl}${filePath}`;
+  return `${config.baseUrl}${filePath}`;
 };
+
+// Shape a resume subdocument for API responses with an absolute download URL.
+const formatResume = (resume) => ({
+  _id: resume._id,
+  fileName: resume.fileName,
+  filePath: resume.filePath,
+  downloadUrl: getDownloadUrl(resume.filePath),
+  isPrimary: resume.isPrimary,
+  uploadedAt: resume.createdAt,
+});
 
 const normalizeCompanyName = (companyName) => {
   return typeof companyName === "string"
@@ -149,7 +159,7 @@ const calculateProfileCompletion = (user) => {
   }
 
   // Check Resume (10%)
-  if (user.resume && user.resume.trim()) {
+  if (user.resumes?.length > 0 || (user.resume && user.resume.trim())) {
     completedSections.push("Resume");
     totalPercentage += weights.resume;
   }
@@ -168,7 +178,7 @@ const getPersonalDetails = async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId).select(
-      "personalDetails profileImage resume",
+      "personalDetails profileImage resume resumes",
     );
 
     if (!user) {
@@ -180,8 +190,9 @@ const getPersonalDetails = async (req, res) => {
       lastName: user.personalDetails?.lastName || "",
       profileName: user.personalDetails?.profileName || "",
       jobRole: user.personalDetails?.jobRole || "",
-      profileImage: user.profileImage || "",
-      resume: user.resume || "",
+      // Absolute URL so the saved image renders immediately on load.
+      profileImage: getDownloadUrl(user.profileImage) || "",
+      resumes: (user.resumes || []).map(formatResume),
       profileDescription: user.personalDetails?.profileDescription || "",
     };
 
@@ -216,7 +227,9 @@ const savePersonalDetails = async (req, res) => {
       userId,
       { $set: updateData },
       { new: true, runValidators: true },
-    ).select("personalDetails profileImage resume contactDetails email");
+    ).select(
+      "personalDetails profileImage resume resumes contactDetails email",
+    );
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -238,7 +251,8 @@ const savePersonalDetails = async (req, res) => {
         lastName: user.personalDetails?.lastName || "",
         profileName: user.personalDetails?.profileName || "",
         jobRole: user.personalDetails?.jobRole || "",
-        profileImage: user.profileImage || "",
+        profileImage: getDownloadUrl(user.profileImage) || "",
+        resumes: (user.resumes || []).map(formatResume),
         profileDescription: user.personalDetails?.profileDescription || "",
       },
       profileCompletion: user.profileCompletion,
@@ -258,7 +272,7 @@ const getContactDetails = async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId).select(
-      "email contactDetails resume profileImage",
+      "email contactDetails resume resumes profileImage",
     );
 
     if (!user) {
@@ -266,7 +280,7 @@ const getContactDetails = async (req, res) => {
     }
     const personContact = {
       email: user.email,
-      resume: user.resume,
+      resumes: (user.resumes || []).map(formatResume),
 
       profileImage: user.profileImage,
       profileImageUrl: getDownloadUrl(user.profileImage),
@@ -299,7 +313,7 @@ const updateContactDetails = async (req, res) => {
       { $set: updateData },
       { new: true, runValidators: true },
     ).select(
-      "contactDetails email personalDetails education experience projects skills portfolio profileImage resume",
+      "contactDetails email personalDetails education experience projects skills portfolio profileImage resume resumes",
     );
 
     if (!user) {
@@ -355,7 +369,7 @@ const addEducation = async (req, res) => {
     const educationData = req.body;
 
     let user = await User.findById(userId).select(
-      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume",
+      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -394,7 +408,7 @@ const updateEducation = async (req, res) => {
     const updateData = req.body;
 
     let user = await User.findOne({ _id: userId }).select(
-      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume",
+      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -439,7 +453,7 @@ const deleteEducation = async (req, res) => {
     const { educationId } = req.params;
 
     let user = await User.findById(userId).select(
-      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume",
+      "education personalDetails contactDetails email experience projects skills portfolio profileImage resume resumes",
     );
 
     if (!user) {
@@ -513,7 +527,7 @@ const addExperience = async (req, res) => {
     const experienceData = req.body;
 
     let user = await User.findById(userId).select(
-      "experience projects skills personalDetails contactDetails email education projects skills portfolio profileImage resume",
+      "experience projects skills personalDetails contactDetails email education projects skills portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -553,7 +567,7 @@ const updateExperience = async (req, res) => {
     const updateData = req.body;
 
     let user = await User.findOne({ _id: userId }).select(
-      "experience projects skills personalDetails contactDetails email education portfolio profileImage resume",
+      "experience projects skills personalDetails contactDetails email education portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -600,7 +614,7 @@ const deleteExperience = async (req, res) => {
     const { experienceId } = req.params;
 
     let user = await User.findById(userId).select(
-      "experience projects skills personalDetails contactDetails email education portfolio profileImage resume",
+      "experience projects skills personalDetails contactDetails email education portfolio profileImage resume resumes",
     );
 
     if (!user) {
@@ -687,7 +701,7 @@ const addProject = async (req, res) => {
     const projectData = req.body;
 
     let user = await User.findById(userId).select(
-      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume",
+      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -728,7 +742,7 @@ const updateProject = async (req, res) => {
     const updateData = req.body;
 
     let user = await User.findOne({ _id: userId }).select(
-      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume",
+      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -775,7 +789,7 @@ const deleteProject = async (req, res) => {
     const { projectId } = req.params;
 
     let user = await User.findById(userId).select(
-      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume",
+      "projects experience skills personalDetails contactDetails email education portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -840,7 +854,7 @@ const addSkill = async (req, res) => {
     const skillData = req.body;
 
     let user = await User.findById(userId).select(
-      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume",
+      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -879,7 +893,7 @@ const updateSkill = async (req, res) => {
     const updateData = req.body;
 
     let user = await User.findOne({ _id: userId }).select(
-      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume",
+      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume resumes",
     );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -924,7 +938,7 @@ const deleteSkill = async (req, res) => {
     const { skillId } = req.params;
 
     let user = await User.findById(userId).select(
-      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume",
+      "skills personalDetails contactDetails email education experience projects portfolio profileImage resume resumes",
     );
 
     if (!user) {
@@ -968,7 +982,7 @@ const getProfileCompletion = async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await User.findById(userId).select(
-      "personalDetails contactDetails education experience projects skills portfolio profileImage resume profileCompletion",
+      "personalDetails contactDetails education experience projects skills portfolio profileImage resume resumes profileCompletion",
     );
 
     if (!user) {

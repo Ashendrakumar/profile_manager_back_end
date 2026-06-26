@@ -158,6 +158,17 @@ function arrayLimit(val) {
   return val.length <= 2;
 }
 
+// A user can store multiple resumes; exactly one is marked primary and that
+// is the one surfaced on the public portfolio.
+const ResumeSchema = new mongoose.Schema(
+  {
+    fileName: { type: String, required: true },
+    filePath: { type: String, required: true },
+    isPrimary: { type: Boolean, default: false },
+  },
+  { timestamps: true },
+);
+
 const UserSchema = new mongoose.Schema(
   {
     username: { type: String, required: true, unique: true },
@@ -178,7 +189,10 @@ const UserSchema = new mongoose.Schema(
     skills: [SkillSchema],
     portfolio: { type: PortfolioSchema },
     profileImage: { type: String, default: "" },
+    // Legacy single-resume field, kept for backward compatibility with
+    // existing data. New uploads are stored in `resumes`.
     resume: { type: String, default: "" },
+    resumes: { type: [ResumeSchema], default: [] },
     // Profile Completion Tracking
     profileCompletion: {
       percentage: {

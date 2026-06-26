@@ -96,8 +96,15 @@ import express from "express";
 import { createUploader } from "../middlewares/upload.js";
 import * as uploadController from "../controllers/upload.controller.js";
 import authenticateToken from "../middlewares/auth.js";
-const { uploadProfile, uploadHeroImages, uploadResumePdf, downloadFileByPath } =
-  uploadController;
+const {
+  uploadProfile,
+  uploadHeroImages,
+  uploadResumePdf,
+  getResumes,
+  setPrimaryResume,
+  deleteResume,
+  downloadFileByPath,
+} = uploadController;
 
 const router = express.Router();
 
@@ -135,6 +142,11 @@ router.post(
 router.post("/hero-images", heroUploader.array("heroes", 5), uploadHeroImages);
 
 router.post("/resume-upload", resumeUploader.single("resume"), uploadResumePdf);
+
+// Resume list management
+router.get("/resumes", getResumes);
+router.patch("/resume/:resumeId/primary", setPrimaryResume);
+router.delete("/resume/:resumeId", deleteResume);
 
 router.get("/file-download/:filename", downloadFileByPath);
 

@@ -66,7 +66,9 @@ export const createUploader = ({
       return cb(null, true);
     }
 
-    cb(new Error(currentRules.errorMsg));
+    const error = new Error(currentRules.errorMsg);
+    error.statusCode = 400; // invalid file type is a client error, not a 500
+    cb(error);
   };
 
   return multer({

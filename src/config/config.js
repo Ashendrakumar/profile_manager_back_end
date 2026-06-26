@@ -7,6 +7,7 @@ const config = {
   jwtSecret: process.env.JWT_SECRET,
   encryptionKey: process.env.ENCRYPTION_KEY,
   portfolioUrl: process.env.PORTFOLIO_URL,
+  baseUrl: process.env.BASE_URL || `http://localhost:${process.env.PORT || 8001}`,
 };
 
 export default config;
