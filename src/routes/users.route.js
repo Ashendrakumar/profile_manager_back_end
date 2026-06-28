@@ -188,6 +188,8 @@ import {
   updateUser,
   deleteUser,
   logoutUser,
+  verifyOtp,
+  resendOtp,
 } from "../controllers/user.controller.js";
 
 import authenticateToken from "../middlewares/auth.js";
@@ -199,6 +201,8 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
+router.post("/verify-otp", verifyOtp);
+router.post("/resend-otp", resendOtp);
 
 // Protected routes - User can access their own data
 router.get("/me", authenticateToken, getCurrentUser);

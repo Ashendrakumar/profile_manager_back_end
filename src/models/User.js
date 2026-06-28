@@ -180,6 +180,10 @@ const UserSchema = new mongoose.Schema(
       default: "user",
       required: true,
     },
+    // OTP Email Verification
+    isVerified: { type: Boolean, default: false },
+    otp: { type: String, default: null },
+    otpExpiry: { type: Date, default: null },
     // Profile sections
     personalDetails: { type: PersonalDetailsSchema },
     contactDetails: { type: ContactDetailsSchema },
