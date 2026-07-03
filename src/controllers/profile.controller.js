@@ -176,7 +176,15 @@ const calculateProfileCompletion = (user) => {
 // Get personal details
 const getPersonalDetails = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    console.log("Full URL:", req.originalUrl);
+    console.log("req.query:", req.query);
+    console.log("req.params:", req.params);
+    let userId = req.user.userId;
+    const userRole = req.user.role;
+    if (userRole == "admin") {
+      userId = req.query.id;
+    }
+
     const user = await User.findById(userId).select(
       "personalDetails profileImage resume resumes",
     );
