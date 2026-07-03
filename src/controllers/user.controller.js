@@ -8,6 +8,27 @@ import { sendOtpEmail } from "../utils/emailService.js";
 const { jwtSecret } = config;
 
 /**
+ * Build an absolute download URL from a stored (relative) file path.
+ */
+const getDownloadUrl = (filePath) => {
+  if (!filePath) return null;
+  return `${config.baseUrl}${filePath}`;
+};
+
+/**
+ * Shape a resume subdocument for API responses with an absolute download URL.
+ * Mirrors the formatting used in profile.controller.js.
+ */
+const formatResume = (resume) => ({
+  _id: resume._id,
+  fileName: resume.fileName,
+  filePath: resume.filePath,
+  downloadUrl: getDownloadUrl(resume.filePath),
+  isPrimary: resume.isPrimary,
+  uploadedAt: resume.createdAt,
+});
+
+/**
  * Generate a cryptographically secure 6-digit OTP.
  */
 const generateOtp = () => {
@@ -310,12 +331,20 @@ const getUserById = async (req, res) => {
       });
     }
 
-    const user = await User.findById(id).select("-password -otp");
+    // Return the requested user's full profile (all embedded sections).
+    // Sensitive auth fields are excluded.
+    const user = await User.findById(id).select("-password -otp -otpExpiry");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    // Convert relative file paths to absolute URLs so images/resumes render
+    // on the client without it having to reconstruct the server host.
+    const userObj = user.toObject();
+    userObj.profileImage = getDownloadUrl(userObj.profileImage);
+    userObj.resumes = (userObj.resumes || []).map(formatResume);
+
+    res.json(userObj);
   } catch (err) {
     res
       .status(500)
