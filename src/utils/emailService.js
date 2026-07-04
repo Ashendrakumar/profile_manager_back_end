@@ -5,7 +5,9 @@ import nodemailer from "nodemailer";
  * Requires EMAIL_USER and EMAIL_PASS in .env
  */
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -26,7 +28,7 @@ const getOtpEmailTemplate = (otp, name = "there") => {
           <div style="
             width:48px;height:56px;
             background:#f0f4ff;
-            border:2px solid #6366f1;
+            border:2px solid #00897b;
             border-radius:12px;
             display:inline-flex;
             align-items:center;
