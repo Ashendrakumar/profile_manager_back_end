@@ -49,7 +49,7 @@ class JwtService {
       );
     }
     try {
-      return this.verify(authToken); // { userId, role, iat, exp }
+      return this.verify(authToken);
     } catch (err) {
       if (err.name === "TokenExpiredError") {
         throw new Error(
@@ -70,5 +70,4 @@ class JwtService {
 
 // Shared singleton — import this everywhere in the MCP server.
 export const jwtService = new JwtService();
-
 export default JwtService;

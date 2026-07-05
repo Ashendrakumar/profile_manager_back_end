@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import "dotenv/config";
-import { JwtService } from "../services/jwtService.js";
+import { jwtService } from "../services/jwtService.js";
 
 // -----------------------------------------------------------------
 // Point this at your real model file, e.g. "../models/User.js"
@@ -69,7 +69,7 @@ function buildMcpServer() {
         if (!isMatch)
           return errorResult(new Error("Invalid email or password"));
 
-        const authToken = JwtService.sign({
+        const authToken = jwtService.sign({
           userId: user._id.toString(),
           role: user.role,
         });
@@ -78,7 +78,7 @@ function buildMcpServer() {
           message:
             "Login successful. Use this authToken in every subsequent tool call.",
           authToken,
-          expiresIn: JwtService.expiresIn,
+          expiresIn: jwtService.expiresIn,
           userId: user._id.toString(),
         });
       } catch (err) {
@@ -102,7 +102,7 @@ function buildMcpServer() {
     },
     async ({ authToken }) => {
       try {
-        const { userId } = JwtService.requireAuth(authToken);
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId).select("-password -otp");
         if (!user) return errorResult(new Error("User not found"));
         return textResult(user);
@@ -136,7 +136,7 @@ function buildMcpServer() {
     },
     async ({ authToken, data }) => {
       try {
-        const { userId } = JwtService.requireAuth(authToken);
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findByIdAndUpdate(
           userId,
           { $set: { personalDetails: data } },
@@ -174,7 +174,7 @@ function buildMcpServer() {
     },
     async ({ authToken, data }) => {
       try {
-        const { userId } = JwtService.requireAuth(authToken);
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findByIdAndUpdate(
           userId,
           { $set: { contactDetails: data } },
@@ -205,7 +205,7 @@ function buildMcpServer() {
     },
     async ({ authToken, section, data }) => {
       try {
-        const { userId } = JwtService.requireAuth(authToken);
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId);
         if (!user) return errorResult(new Error("User not found"));
 
@@ -238,7 +238,7 @@ function buildMcpServer() {
     },
     async ({ authToken, section, itemId, data }) => {
       try {
-        const { userId } = JwtService.requireAuth(authToken);
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId);
         if (!user) return errorResult(new Error("User not found"));
 
@@ -273,7 +273,7 @@ function buildMcpServer() {
     },
     async ({ authToken, section, itemId }) => {
       try {
-        const { userId } = JwtService.requireAuth(authToken);
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId);
         if (!user) return errorResult(new Error("User not found"));
 
