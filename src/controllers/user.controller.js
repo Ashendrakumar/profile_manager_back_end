@@ -43,10 +43,18 @@ const registerUser = async (req, res) => {
 
         await sendOtpEmail(existingUser.email, otp, existingUser.username);
 
+        // Issue a short-lived OTP token so the frontend can navigate securely
+        const otpToken = jwt.sign(
+          { email: existingUser.email, fullName: existingUser.username },
+          jwtSecret,
+          { expiresIn: "10m" },
+        );
+
         return res.status(200).json({
           message:
             "Account pending verification. A new OTP has been sent to your email.",
           email: existingUser.email,
+          otpToken,
         });
       }
       return res
@@ -86,10 +94,18 @@ const registerUser = async (req, res) => {
       });
     }
 
+    // Issue a short-lived OTP token (10 min) carrying email + fullName for the frontend
+    const otpToken = jwt.sign(
+      { email, fullName: username },
+      jwtSecret,
+      { expiresIn: "10m" },
+    );
+
     res.status(201).json({
       message:
         "Registration successful! Please check your email for the verification code.",
       email,
+      otpToken,
     });
   } catch (err) {
     res
