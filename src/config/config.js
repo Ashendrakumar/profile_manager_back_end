@@ -15,7 +15,7 @@ const config = {
   emailPort: process.env.EMAIL_PORT,
   emailService: process.env.EMAIL_SERVICE,
   emailSecure: process.env.EMAIL_SECURE,
-  resendApiKey: process.env.RESEND_API_KEY,
+  brevoApiKey: process.env.BREVO_API_KEY,
 };
 
 export default config;
