@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import "dotenv/config";
+import { JwtService as jwtService } from "../services/jwtService.js";
 
 // -----------------------------------------------------------------
 // Point this at your real model file, e.g. "../models/User.js"
@@ -45,16 +46,63 @@ function buildMcpServer() {
     version: "1.0.0",
   });
 
+  // ---------------------------------------------------------------
+  // LOGIN — the only tool that doesn't require an authToken.
+  // ---------------------------------------------------------------
+  server.registerTool(
+    "login",
+    {
+      title: "Login",
+      description:
+        "Log in with email and password to receive an authToken. Call this FIRST — every other tool requires the authToken this returns.",
+      inputSchema: {
+        email: z.string().email(),
+        password: z.string(),
+      },
+    },
+    async ({ email, password }) => {
+      try {
+        const user = await User.findOne({ email });
+        if (!user) return errorResult(new Error("Invalid email or password"));
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch)
+          return errorResult(new Error("Invalid email or password"));
+
+        const authToken = jwtService.sign({
+          userId: user._id.toString(),
+          role: user.role,
+        });
+
+        return textResult({
+          message:
+            "Login successful. Use this authToken in every subsequent tool call.",
+          authToken,
+          expiresIn: jwtService.expiresIn,
+          userId: user._id.toString(),
+        });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------
+  // GET PROFILE
+  // ---------------------------------------------------------------
   server.registerTool(
     "get_profile",
     {
       title: "Get Profile",
       description:
-        "Get a user's full profile (personal details, contact, education, experience, projects, skills, resumes). Password is never returned.",
-      inputSchema: { userId: z.string().describe("The user's _id") },
+        "Get your full profile (personal details, contact, education, experience, projects, skills, resumes). Requires authToken from 'login'. Password is never returned.",
+      inputSchema: {
+        authToken: z.string().describe("Token returned by the 'login' tool"),
+      },
     },
-    async ({ userId }) => {
+    async ({ authToken }) => {
       try {
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId).select("-password -otp");
         if (!user) return errorResult(new Error("User not found"));
         return textResult(user);
@@ -64,14 +112,17 @@ function buildMcpServer() {
     },
   );
 
+  // ---------------------------------------------------------------
+  // UPDATE PERSONAL DETAILS
+  // ---------------------------------------------------------------
   server.registerTool(
     "update_personal_details",
     {
       title: "Update Personal Details",
       description:
-        "Update personalDetails fields (firstName, lastName, profileName, profileDescription, jobRole) for a user",
+        "Update personalDetails fields (firstName, lastName, profileName, profileDescription, jobRole). Requires authToken from 'login'.",
       inputSchema: {
-        userId: z.string(),
+        authToken: z.string(),
         data: z
           .object({
             firstName: z.string().optional(),
@@ -83,8 +134,9 @@ function buildMcpServer() {
           .describe("Fields to update"),
       },
     },
-    async ({ userId, data }) => {
+    async ({ authToken, data }) => {
       try {
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findByIdAndUpdate(
           userId,
           { $set: { personalDetails: data } },
@@ -98,14 +150,17 @@ function buildMcpServer() {
     },
   );
 
+  // ---------------------------------------------------------------
+  // UPDATE CONTACT DETAILS
+  // ---------------------------------------------------------------
   server.registerTool(
     "update_contact_details",
     {
       title: "Update Contact Details",
       description:
-        "Update contactDetails (phones, addresses, socialLinks) for a user. Max 2 phones and 2 addresses.",
+        "Update contactDetails (phones, addresses, socialLinks). Max 2 phones and 2 addresses. Requires authToken from 'login'.",
       inputSchema: {
-        userId: z.string(),
+        authToken: z.string(),
         data: z
           .object({
             phones: z.array(z.any()).max(2).optional(),
@@ -117,8 +172,9 @@ function buildMcpServer() {
           ),
       },
     },
-    async ({ userId, data }) => {
+    async ({ authToken, data }) => {
       try {
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findByIdAndUpdate(
           userId,
           { $set: { contactDetails: data } },
@@ -132,24 +188,30 @@ function buildMcpServer() {
     },
   );
 
+  // ---------------------------------------------------------------
+  // ADD SECTION ITEM
+  // ---------------------------------------------------------------
   server.registerTool(
     "add_section_item",
     {
       title: "Add Section Item",
       description:
-        "Add a new item to one of: education, experience, projects, skills, resumes.",
+        "Add a new item to one of: education, experience, projects, skills, resumes, certifications. Requires authToken from 'login'.",
       inputSchema: {
-        userId: z.string(),
+        authToken: z.string(),
         section: sectionEnum,
         data: z.record(z.any()).describe("Fields for the new item"),
       },
     },
-    async ({ userId, section, data }) => {
+    async ({ authToken, section, data }) => {
       try {
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId);
         if (!user) return errorResult(new Error("User not found"));
+
         user[section].push(data);
         await user.save();
+
         const added = user[section][user[section].length - 1];
         return textResult({ message: `Added to ${section}`, item: added });
       } catch (err) {
@@ -158,28 +220,35 @@ function buildMcpServer() {
     },
   );
 
+  // ---------------------------------------------------------------
+  // UPDATE SECTION ITEM
+  // ---------------------------------------------------------------
   server.registerTool(
     "update_section_item",
     {
       title: "Update Section Item",
       description:
-        "Update an existing item (by its subdocument _id) within one of: education, experience, projects, skills, resumes.",
+        "Update an existing item (by its subdocument _id) within one of: education, experience, projects, skills, resumes, certifications. Requires authToken from 'login'.",
       inputSchema: {
-        userId: z.string(),
+        authToken: z.string(),
         section: sectionEnum,
-        itemId: z.string(),
-        data: z.record(z.any()),
+        itemId: z.string().describe("The subdocument's _id"),
+        data: z.record(z.any()).describe("Fields to update on that item"),
       },
     },
-    async ({ userId, section, itemId, data }) => {
+    async ({ authToken, section, itemId, data }) => {
       try {
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId);
         if (!user) return errorResult(new Error("User not found"));
+
         const item = user[section].id(itemId);
         if (!item)
           return errorResult(new Error(`Item not found in ${section}`));
+
         Object.assign(item, data);
         await user.save();
+
         return textResult({ message: `Updated ${section} item`, item });
       } catch (err) {
         return errorResult(err);
@@ -187,27 +256,34 @@ function buildMcpServer() {
     },
   );
 
+  // ---------------------------------------------------------------
+  // DELETE SECTION ITEM
+  // ---------------------------------------------------------------
   server.registerTool(
     "delete_section_item",
     {
       title: "Delete Section Item",
       description:
-        "Delete an item (by its subdocument _id) from one of: education, experience, projects, skills, resumes.",
+        "Delete an item (by its subdocument _id) from one of: education, experience, projects, skills, resumes, certifications. Requires authToken from 'login'.",
       inputSchema: {
-        userId: z.string(),
+        authToken: z.string(),
         section: sectionEnum,
         itemId: z.string(),
       },
     },
-    async ({ userId, section, itemId }) => {
+    async ({ authToken, section, itemId }) => {
       try {
+        const { userId } = jwtService.requireAuth(authToken);
         const user = await User.findById(userId);
         if (!user) return errorResult(new Error("User not found"));
+
         const item = user[section].id(itemId);
         if (!item)
           return errorResult(new Error(`Item not found in ${section}`));
+
         item.deleteOne();
         await user.save();
+
         return textResult({ message: `Deleted item from ${section}` });
       } catch (err) {
         return errorResult(err);
@@ -225,9 +301,6 @@ export function createMcpRouter() {
   const router = express.Router();
   router.use(express.json());
 
-  // Stateless mode: a fresh McpServer + transport per request.
-  // Simplest option for hosting on Render — no session storage needed,
-  // and survives instance restarts/free-tier spin-downs cleanly.
   router.post("/", async (req, res) => {
     try {
       const server = buildMcpServer();
@@ -254,8 +327,6 @@ export function createMcpRouter() {
     }
   });
 
-  // Streamable HTTP clients may probe with GET/DELETE for session
-  // management — not needed in stateless mode, so respond 405.
   router.get("/", (req, res) => {
     res.status(405).json({
       jsonrpc: "2.0",

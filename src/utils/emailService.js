@@ -1,18 +1,48 @@
 import nodemailer from "nodemailer";
 
+let transporter = null;
 /**
- * Create a Nodemailer transporter using Gmail SMTP.
- * Requires EMAIL_USER and EMAIL_PASS in .env
+ * Lazily initialize and return the Nodemailer transporter.
  */
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const getTransporter = () => {
+  if (!transporter) {
+    const isSecure =
+      process.env.EMAIL_SECURE === "true" || process.env.EMAIL_PORT === "465";
+    const port = parseInt(process.env.EMAIL_PORT) || (isSecure ? 465 : 587);
+
+    const configOpts = {
+      host: process.env.EMAIL_HOST || "smtp.gmail.com",
+      port: port,
+      secure: isSecure,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    };
+
+    if (process.env.EMAIL_SERVICE) {
+      delete configOpts.host;
+      delete configOpts.port;
+      delete configOpts.secure;
+      configOpts.service = process.env.EMAIL_SERVICE;
+    }
+
+    console.log(
+      `Initializing Nodemailer transporter (Service: ${process.env.EMAIL_SERVICE || "custom"}, Host: ${configOpts.host || "default"}, Port: ${configOpts.port || "default"}, Secure: ${configOpts.secure || "default"})...`,
+    );
+    transporter = nodemailer.createTransport(configOpts);
+  }
+  return transporter;
+};
+
+/**
+ * Basic sanity check on a Brevo API key's shape (does NOT verify it's active/authorized —
+ * only catches obvious copy/paste mistakes like a masked or truncated key).
+ */
+const isPlausibleBrevoKey = (key) => {
+  if (!key) return false;
+  return key.startsWith("xkeysib-") && key.length > 40;
+};
 
 /**
  * Generate a beautiful HTML email with the OTP code.
@@ -159,12 +189,108 @@ const getOtpEmailTemplate = (otp, name = "there") => {
  * @param {string} name  - Recipient's name
  */
 export const sendOtpEmail = async (email, otp, name = "there") => {
+  const subject = "🔐 Your Email Verification Code";
+  const htmlContent = getOtpEmailTemplate(otp, name);
+  const senderEmail =
+    process.env.EMAIL_USER || "palashendrakumar.b2c@gmail.com";
+  const senderName = "Profile Manager";
+
+  // Option 1: Resend HTTP API (Ideal for bypassing Render free-tier SMTP block)
+  if (process.env.RESEND_API_KEY) {
+    console.log("Sending email via Resend HTTP API...");
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: `${senderName} <${senderEmail}>`,
+          to: [email],
+          subject: subject,
+          html: htmlContent,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        // Log full response body — the actual reason (invalid key, unverified
+        // domain, etc.) is always in here even when the thrown message is generic.
+        console.error("Resend API error response:", JSON.stringify(data));
+        throw new Error(
+          `Resend API error: ${response.status} - ${JSON.stringify(data)}`,
+        );
+      }
+      console.log("Email sent successfully via Resend API:", data.id);
+      return;
+    } catch (err) {
+      console.error("Failed to send email via Resend API:", err);
+      throw err;
+    }
+  }
+
+  // Option 2: Brevo HTTP API (Alternative HTTP API)
+  if (process.env.BREVO_API_KEY) {
+    // Catch the #1 real-world cause of silent Brevo failures early: a masked,
+    // truncated, or otherwise malformed key pasted from the dashboard.
+    if (!isPlausibleBrevoKey(process.env.BREVO_API_KEY)) {
+      console.error(
+        "BREVO_API_KEY does not look like a valid Brevo key (should start with 'xkeysib-' " +
+          "and be a long string). Generate a fresh key in Brevo → Settings → SMTP & API → " +
+          "API Keys & MCP, since masked/partial keys shown in the dashboard cannot be reused.",
+      );
+    }
+
+    console.log("Sending email via Brevo HTTP API...");
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: email, name: name }],
+          subject: subject,
+          htmlContent: htmlContent,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        // Log full response body — Brevo's error `message` (e.g. "Key not found",
+        // "Sender not authorized") is the real clue and was previously swallowed.
+        console.error("Brevo API error response:", JSON.stringify(data));
+        throw new Error(
+          `Brevo API error: ${response.status} - ${JSON.stringify(data)}`,
+        );
+      }
+      console.log("Email sent successfully via Brevo API:", data.messageId);
+      return;
+    } catch (err) {
+      console.error("Failed to send email via Brevo API:", err);
+      throw err;
+    }
+  }
+
+  // Option 3: Nodemailer SMTP
+  console.log("Sending email via SMTP (Nodemailer)...");
   const mailOptions = {
-    from: `"Profile Manager" <${process.env.EMAIL_USER}>`,
+    from: `"${senderName}" <${senderEmail}>`,
     to: email,
-    subject: "🔐 Your Email Verification Code",
-    html: getOtpEmailTemplate(otp, name),
+    subject: subject,
+    html: htmlContent,
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    const activeTransporter = getTransporter();
+    await activeTransporter.sendMail(mailOptions);
+    console.log("Email sent successfully via SMTP.");
+  } catch (err) {
+    console.error("Failed to send email via SMTP:", err);
+    throw err;
+  }
 };
