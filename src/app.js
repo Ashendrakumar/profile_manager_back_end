@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 // Swagger setup
 import swaggerUi from "swagger-ui-express";
 import swaggerSpecs from "./swagger-new.js";
+import { createMcpRouter } from "./mcp/server.js";
 
 const app = express();
 
@@ -60,6 +61,8 @@ app.get("/api", (req, res) => {
 
 // Routes
 app.use("/api", router);
+
+app.use("/mcp", createMcpRouter());
 
 // Swagger route
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
