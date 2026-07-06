@@ -95,11 +95,9 @@ const registerUser = async (req, res) => {
     }
 
     // Issue a short-lived OTP token (10 min) carrying email + fullName for the frontend
-    const otpToken = jwt.sign(
-      { email, fullName: username },
-      jwtSecret,
-      { expiresIn: "10m" },
-    );
+    const otpToken = jwt.sign({ email, fullName: username }, jwtSecret, {
+      expiresIn: "10m",
+    });
 
     res.status(201).json({
       message:
@@ -286,6 +284,7 @@ function mapUserData(user) {
     name: user.username,
     email: user.email,
     role: user.role,
+    avatarUrl: user.profileImage || "",
     portfolio: {
       link: user.portfolio?.link || "",
       isGenerated: user.portfolio?.isGenerated || false,
