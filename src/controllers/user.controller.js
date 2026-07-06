@@ -278,13 +278,19 @@ const loginUser = async (req, res) => {
   }
 };
 
+// Get full download URL
+const getDownloadUrl = (filePath) => {
+  if (!filePath) return null;
+  return `${config.baseUrl}${filePath}`;
+};
+
 function mapUserData(user) {
   return {
     id: user._id.toString(),
     name: user.username,
     email: user.email,
     role: user.role,
-    avatarUrl: user.profileImage || "",
+    avatarUrl: getDownloadUrl(user.profileImage) || "",
     portfolio: {
       link: user.portfolio?.link || "",
       isGenerated: user.portfolio?.isGenerated || false,
