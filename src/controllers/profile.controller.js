@@ -177,9 +177,7 @@ const calculateProfileCompletion = (user) => {
 const getPersonalDetails = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select(
-      "personalDetails profileImage resume resumes",
-    );
+    const user = await User.findById(userId).select("personalDetails");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -190,9 +188,6 @@ const getPersonalDetails = async (req, res) => {
       lastName: user.personalDetails?.lastName || "",
       profileName: user.personalDetails?.profileName || "",
       jobRole: user.personalDetails?.jobRole || "",
-      // Absolute URL so the saved image renders immediately on load.
-      profileImage: getDownloadUrl(user.profileImage) || "",
-      resumes: (user.resumes || []).map(formatResume),
       profileDescription: user.personalDetails?.profileDescription || "",
     };
 
@@ -227,9 +222,7 @@ const savePersonalDetails = async (req, res) => {
       userId,
       { $set: updateData },
       { new: true, runValidators: true },
-    ).select(
-      "personalDetails profileImage resume resumes contactDetails email",
-    );
+    ).select("personalDetails");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -251,8 +244,6 @@ const savePersonalDetails = async (req, res) => {
         lastName: user.personalDetails?.lastName || "",
         profileName: user.personalDetails?.profileName || "",
         jobRole: user.personalDetails?.jobRole || "",
-        profileImage: getDownloadUrl(user.profileImage) || "",
-        resumes: (user.resumes || []).map(formatResume),
         profileDescription: user.personalDetails?.profileDescription || "",
       },
       profileCompletion: user.profileCompletion,

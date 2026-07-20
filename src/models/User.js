@@ -222,27 +222,6 @@ UserSchema.pre("save", async function () {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }
-
-  // Auto-populate firstName from username if not set
-  if (
-    !this.personalDetails?.firstName ||
-    this.personalDetails.firstName === ""
-  ) {
-    if (!this.personalDetails) {
-      this.personalDetails = {};
-    }
-    this.personalDetails.firstName = this.username;
-  }
-
-  // Auto-populate jobRole from latest experience if experience exists
-  if (this.experience && this.experience.length > 0) {
-    if (!this.personalDetails) {
-      this.personalDetails = {};
-    }
-    // Get the latest experience (most recent by default, or the last in array)
-    const latestExperience = this.experience[this.experience.length - 1];
-    this.personalDetails.jobRole = latestExperience.role || "";
-  }
 });
 
 // Optional: helper method for login

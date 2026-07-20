@@ -173,21 +173,22 @@ const uploadResumePdf = async (req, res) => {
       });
     }
 
-    // The first resume a user uploads becomes their primary automatically.
     const isFirstResume = user.resumes.length === 0;
 
-    user.resumes.push({
+    const resume = {
       fileName: req.file.originalname,
       filePath: resumePath,
       isPrimary: isFirstResume,
-    });
+    };
 
-    await user.save();
+    const updatedUser = await User.findByIdAndUpdate(userId, {
+      $push: { resumes: resume },
+    });
 
     return res.status(201).json({
       success: true,
       message: "Resume uploaded successfully",
-      resumes: formatResumes(user.resumes),
+      resumes: formatResumes(updatedUser.resumes),
     });
   } catch (error) {
     return res.status(500).json({
@@ -207,7 +208,9 @@ const getResumes = async (req, res) => {
     const user = await User.findById(userId).select("resumes");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     return res.status(200).json({
@@ -230,7 +233,9 @@ const setPrimaryResume = async (req, res) => {
 
     const user = await User.findById(userId).select("resumes");
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const target = user.resumes.id(resumeId);
@@ -268,7 +273,9 @@ const deleteResume = async (req, res) => {
 
     const user = await User.findById(userId).select("resumes");
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     const target = user.resumes.id(resumeId);
