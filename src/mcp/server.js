@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import "dotenv/config";
 import { jwtService } from "../services/jwtService.js";
+import User  from "../models/User.js";
 
 // -----------------------------------------------------------------
 // Point this at your real model file, e.g. "../models/User.js"
