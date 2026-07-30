@@ -4,6 +4,7 @@ import crypto from "crypto";
 import User from "../models/User.js";
 import config from "../config/config.js";
 import { sendOtpEmail } from "../utils/emailService.js";
+import { getGoogleAuthUrl, getGoogleUserProfile } from "../utils/googleAuth.js";
 
 const { jwtSecret } = config;
 
@@ -477,6 +478,113 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Google OAuth — Step 1: Redirect to Google consent screen
+// ─────────────────────────────────────────────────────────────────────────────
+const googleAuthRedirect = (req, res) => {
+  try {
+    const url = getGoogleAuthUrl();
+    res.redirect(url);
+  } catch (err) {
+    console.error("[Google OAuth] Failed to generate auth URL:", err.message);
+    res.redirect(`${config.frontendUrl}/login?error=google_init_failed`);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Google OAuth — Step 2: Handle Google callback, upsert user, issue JWT
+// ─────────────────────────────────────────────────────────────────────────────
+const googleAuthCallback = async (req, res) => {
+  const { code, error: oauthError } = req.query;
+
+  // User denied access on Google's consent screen
+  if (oauthError) {
+    console.warn("[Google OAuth] User denied access:", oauthError);
+    return res.redirect(`${config.frontendUrl}/login?error=google_access_denied`);
+  }
+
+  if (!code) {
+    return res.redirect(`${config.frontendUrl}/login?error=google_no_code`);
+  }
+
+  try {
+    // Exchange code for Google profile
+    const googleProfile = await getGoogleUserProfile(code);
+    const { googleId, email, name, picture } = googleProfile;
+
+    // ── Find or create the user ────────────────────────────────────────────────
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
+
+    if (user) {
+      // Existing user — link Google ID if not already linked
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = "google";
+      }
+      // Google-verified emails are always trusted
+      if (!user.isVerified) {
+        user.isVerified = true;
+      }
+      // Update profile picture if user doesn't have one
+      if (!user.profileImage && picture) {
+        user.profileImage = picture;
+      }
+      await user.save();
+    } else {
+      // New user — create account without a password
+      // Generate a unique username from the Google name
+      const baseUsername = name
+        .toLowerCase()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
+
+      // Ensure uniqueness by appending a random suffix if needed
+      let username = baseUsername;
+      const existing = await User.findOne({ username });
+      if (existing) {
+        username = `${baseUsername}_${crypto.randomInt(1000, 9999)}`;
+      }
+
+      user = new User({
+        username,
+        email,
+        password: null, // OAuth users have no password
+        googleId,
+        authProvider: "google",
+        isVerified: true, // Google has verified the email
+        profileImage: picture || "",
+      });
+      await user.save();
+    }
+
+    // ── Issue JWT ──────────────────────────────────────────────────────────────
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      config.jwtSecret,
+      { expiresIn: "1h" }
+    );
+
+    // ── Redirect to frontend with token and basic user info in query params ────
+    const params = new URLSearchParams({
+      token,
+      userId: user._id.toString(),
+      name: user.username,
+      email: user.email,
+      role: user.role,
+      avatarUrl: user.profileImage || "",
+    });
+
+    return res.redirect(
+      `${config.frontendUrl}/auth/google/callback?${params.toString()}`
+    );
+  } catch (err) {
+    console.error("[Google OAuth] Callback error:", err.message);
+    return res.redirect(
+      `${config.frontendUrl}/login?error=google_auth_failed`
+    );
+  }
+};
+
 export {
   registerUser,
   loginUser,
@@ -489,4 +597,6 @@ export {
   deleteUser,
   verifyOtp,
   resendOtp,
+  googleAuthRedirect,
+  googleAuthCallback,
 };

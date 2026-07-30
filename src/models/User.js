@@ -153,6 +153,19 @@ const PortfolioSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Certification Schema
+const CertificationSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true }, // e.g. "AWS Certified Solutions Architect"
+    issuingOrganization: { type: String, required: true }, // e.g. "Amazon Web Services"
+    issueDate: { type: Date, required: true },
+    expirationDate: { type: Date }, // omit if it doesn't expire
+    credentialId: { type: String },
+    credentialUrl: { type: String }, // link to verify the credential
+  },
+  { timestamps: true },
+);
+
 // Helper function to limit array length
 function arrayLimit(val) {
   return val.length <= 2;
@@ -172,13 +185,20 @@ const ResumeSchema = new mongoose.Schema(
 const UserSchema = new mongoose.Schema(
   {
     username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    password: { type: String, required: false, default: null }, // null for OAuth-only users
     email: { type: String, required: true, unique: true },
     role: {
       type: String,
       enum: ["admin", "user"],
       default: "user",
       required: true,
+    },
+    // OAuth providers
+    googleId: { type: String, sparse: true, default: null }, // Google's 'sub' field
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
     },
     // OTP Email Verification
     isVerified: { type: Boolean, default: false },
@@ -197,6 +217,7 @@ const UserSchema = new mongoose.Schema(
     // existing data. New uploads are stored in `resumes`.
     resume: { type: String, default: "" },
     resumes: { type: [ResumeSchema], default: [] },
+    certifications: [CertificationSchema],
     // Profile Completion Tracking
     profileCompletion: {
       percentage: {
@@ -217,8 +238,8 @@ const UserSchema = new mongoose.Schema(
 
 // Pre-save hook to hash passwords and auto-populate personal details
 UserSchema.pre("save", async function () {
-  // Hash password if modified
-  if (this.isModified("password")) {
+  // Hash password only if it is modified and not null (OAuth users have no password)
+  if (this.isModified("password") && this.password) {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
   }
