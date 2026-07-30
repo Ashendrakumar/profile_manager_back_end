@@ -575,7 +575,7 @@ const googleAuthCallback = async (req, res) => {
     });
 
     return res.redirect(
-      `${config.frontendUrl}/auth/google/callback?${params.toString()}`
+      `${config.frontendUrl}/google/callback?${params.toString()}`
     );
   } catch (err) {
     console.error("[Google OAuth] Callback error:", err.message);
