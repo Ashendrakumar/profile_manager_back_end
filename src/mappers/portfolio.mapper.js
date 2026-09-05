@@ -39,6 +39,11 @@ const mapUserToPortfolio = (user) => {
   if (!user) return null;
   const name = user.personalDetails?.profileName || user.username || "";
   const resumePath = getPrimaryResumePath(user);
+  const sortedExperience = [...(user.experience || [])].sort((a, b) => {
+    const aTime = (a.isCurrentlyWorking ? new Date() : new Date(a.endDate ?? a.startDate)).getTime();
+    const bTime = (b.isCurrentlyWorking ? new Date() : new Date(b.endDate ?? b.startDate)).getTime();
+    return bTime - aTime; // descending — latest first
+  });
 
   return {
     projectNavbarData: {
@@ -153,7 +158,7 @@ const mapUserToPortfolio = (user) => {
         sub_title:
           "A journey of growth, dedication, and valuable contributions across different roles and responsibilities.",
         experienceItems:
-          user.experience?.map((exp) => ({
+          sortedExperience?.map((exp) => ({
             jobRole: exp.role,
             org_title: exp.companyName,
             orgLogo: "",
