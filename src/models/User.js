@@ -64,6 +64,7 @@ const EducationSchema = new mongoose.Schema(
     standard: { type: String, required: true }, // e.g., "Bachelor's Degree", "Class 12"
     institution: { type: String, required: true },
     university: { type: String },
+    location: { type: String },
     passingYear: { type: Number, required: true },
     grade: { type: String }, // e.g., "A+", "3.8/4.0"
     specialization: { type: String }, // e.g., "Computer Science"
@@ -76,6 +77,7 @@ const ExperienceSchema = new mongoose.Schema(
   {
     companyName: { type: String, required: true },
     role: { type: String, required: true },
+    location: { type: String },
     roleDescription: { type: String },
     startDate: { type: Date, required: true },
     endDate: { type: Date },
