@@ -122,7 +122,7 @@ const mapUserToPortfolio = (user) => {
             title: edu.standard,
             institution: edu.institution,
             date: edu.passingYear?.toString(),
-            location: "",
+            location: edu.location || "",
             details: edu.specialization || "",
             percentage: edu.grade || "",
           })) || [],
@@ -161,6 +161,7 @@ const mapUserToPortfolio = (user) => {
           sortedExperience?.map((exp) => ({
             jobRole: exp.role,
             org_title: exp.companyName,
+            location: exp.location,
             orgLogo: "",
             org_link: "",
             date: `${exp.startDate?.toLocaleDateString()} - ${
@@ -168,7 +169,6 @@ const mapUserToPortfolio = (user) => {
                 ? "Present"
                 : exp.endDate?.toLocaleDateString()
             }`,
-            location: "",
             projectsHandled: exp.projects?.length || 0,
           })) || [],
       },
