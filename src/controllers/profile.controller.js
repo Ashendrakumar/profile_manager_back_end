@@ -968,6 +968,213 @@ const deleteSkill = async (req, res) => {
   }
 };
 
+// ==================== Certifications ====================
+
+const CERTIFICATION_FIELDS = [
+  "name",
+  "issuingOrganization",
+  "issueDate",
+  "expirationDate",
+  "credentialId",
+  "credentialUrl",
+  "description",
+];
+
+// The front-end uses different field names (title/issuer/expiryDate); accept
+// either spelling and map to the model's field names.
+const CERTIFICATION_ALIASES = {
+  title: "name",
+  issuer: "issuingOrganization",
+  expiryDate: "expirationDate",
+};
+
+const pickCertificationData = (body = {}) => {
+  const data = {};
+  for (const [alias, field] of Object.entries(CERTIFICATION_ALIASES)) {
+    if (body[alias] !== undefined) data[field] = body[alias];
+  }
+  for (const field of CERTIFICATION_FIELDS) {
+    if (body[field] !== undefined) data[field] = body[field];
+  }
+  // An empty string from a cleared date input means "no expiry".
+  if (data.expirationDate === "") data.expirationDate = null;
+  return data;
+};
+
+const toDateString = (date) =>
+  date ? new Date(date).toISOString().slice(0, 10) : "";
+
+// Shape a certification with both the model's field names and the aliases the
+// front-end reads, with dates as YYYY-MM-DD for date inputs.
+const formatCertification = (cert) => ({
+  _id: cert._id,
+  name: cert.name,
+  issuingOrganization: cert.issuingOrganization,
+  issueDate: toDateString(cert.issueDate),
+  expirationDate: toDateString(cert.expirationDate),
+  credentialId: cert.credentialId || "",
+  credentialUrl: cert.credentialUrl || "",
+  description: cert.description || "",
+  title: cert.name,
+  issuer: cert.issuingOrganization,
+  expiryDate: toDateString(cert.expirationDate),
+  isExpired: cert.expirationDate
+    ? new Date(cert.expirationDate) < new Date()
+    : false,
+  createdAt: cert.createdAt,
+  updatedAt: cert.updatedAt,
+});
+
+// Most recently issued first.
+const sortCertifications = (certifications = []) =>
+  [...certifications].sort(
+    (a, b) => new Date(b.issueDate) - new Date(a.issueDate),
+  );
+
+const validateCertificationDates = ({ issueDate, expirationDate }) => {
+  if (issueDate && isNaN(new Date(issueDate))) return "Invalid issue date";
+  if (expirationDate && isNaN(new Date(expirationDate)))
+    return "Invalid expiry date";
+  if (
+    issueDate &&
+    expirationDate &&
+    new Date(expirationDate) < new Date(issueDate)
+  ) {
+    return "Expiry date cannot be before the issue date";
+  }
+  return null;
+};
+
+// Get all certifications
+const getCertifications = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select("certifications");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json({
+      certifications: sortCertifications(user.certifications).map(
+        formatCertification,
+      ),
+    });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to fetch certifications", error: err.message });
+  }
+};
+
+// Add certification
+const addCertification = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const certificationData = pickCertificationData(req.body);
+
+    if (
+      !certificationData.name ||
+      !certificationData.issuingOrganization ||
+      !certificationData.issueDate
+    ) {
+      return res.status(400).json({
+        message: "Certificate title, issuer and issue date are required",
+      });
+    }
+
+    const dateError = validateCertificationDates(certificationData);
+    if (dateError) return res.status(400).json({ message: dateError });
+
+    const user = await User.findById(userId).select("certifications");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.certifications.push(certificationData);
+    await user.save();
+
+    const newCertification =
+      user.certifications[user.certifications.length - 1];
+    res.status(201).json({
+      message: "Certification added successfully",
+      certification: formatCertification(newCertification),
+    });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ message: "Failed to add certification", error: err.message });
+  }
+};
+
+// Update certification
+const updateCertification = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { certificationId } = req.params;
+    const updateData = pickCertificationData(req.body);
+
+    const user = await User.findById(userId).select("certifications");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const certification = user.certifications.id(certificationId);
+    if (!certification) {
+      return res.status(404).json({ message: "Certification not found" });
+    }
+
+    // Validate dates against the resulting values, not just the changed ones.
+    const dateError = validateCertificationDates({
+      issueDate: updateData.issueDate ?? certification.issueDate,
+      expirationDate:
+        updateData.expirationDate !== undefined
+          ? updateData.expirationDate
+          : certification.expirationDate,
+    });
+    if (dateError) return res.status(400).json({ message: dateError });
+
+    Object.assign(certification, updateData);
+    await user.save();
+
+    res.json({
+      message: "Certification updated successfully",
+      certification: formatCertification(certification),
+    });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ message: "Failed to update certification", error: err.message });
+  }
+};
+
+// Delete certification
+const deleteCertification = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { certificationId } = req.params;
+
+    const user = await User.findById(userId).select("certifications");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const certification = user.certifications.id(certificationId);
+    if (!certification) {
+      return res.status(404).json({ message: "Certification not found" });
+    }
+
+    certification.deleteOne();
+    await user.save();
+
+    res.json({ message: "Certification deleted successfully" });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ message: "Failed to delete certification", error: err.message });
+  }
+};
+
 // ==================== Profile Completion ====================
 
 const getProfileCompletion = async (req, res) => {
@@ -1028,6 +1235,11 @@ export {
   addSkill,
   updateSkill,
   deleteSkill,
+  // Certifications
+  getCertifications,
+  addCertification,
+  updateCertification,
+  deleteCertification,
   // Profile Completion
   getProfileCompletion,
 };

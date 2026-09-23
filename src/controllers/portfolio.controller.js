@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Setting from "../models/Setting.js";
 import config from "../config/config.js";
 import mapUserToPortfolio from "../mappers/portfolio.mapper.js";
 
@@ -11,7 +12,17 @@ const getUserPortfolioDetails = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    const portfolioData = mapUserToPortfolio(user);
+
+    // Users without a settings document get the schema defaults (public).
+    const settings = await Setting.findOne({ user: user._id }).select(
+      "privacy",
+    );
+    const privacy = settings?.privacy?.toObject?.() || {};
+    if (privacy.portfolioVisibility === "private") {
+      return res.status(403).json({ message: "This portfolio is private" });
+    }
+
+    const portfolioData = mapUserToPortfolio(user, privacy);
     res.json(portfolioData);
   } catch (err) {
     res

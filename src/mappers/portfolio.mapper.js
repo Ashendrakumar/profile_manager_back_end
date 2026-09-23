@@ -29,10 +29,29 @@ const getPrimaryResumePath = (user) => {
   return user.resume || "";
 };
 
-const mapUserToPortfolio = (user) => {
+/**
+ * @param {object} user
+ * @param {object} [privacy] the user's Setting.privacy; every show* flag
+ *   defaults to true so users without settings see the full portfolio.
+ */
+const mapUserToPortfolio = (user, privacy = {}) => {
   if (!user) return null;
+  const {
+    showEmail = true,
+    showPhone = true,
+    showAddress = true,
+    showResumeDownload = true,
+    showCertifications = true,
+  } = privacy;
   const name = user.personalDetails?.profileName || user.username || "";
-  const resumePath = getPrimaryResumePath(user);
+  const resumePath = showResumeDownload ? getPrimaryResumePath(user) : "";
+  const phones = showPhone ? user.contactDetails?.phones || [] : [];
+  const addresses = showAddress ? user.contactDetails?.addresses || [] : [];
+  const certifications = showCertifications
+    ? [...(user.certifications || [])].sort(
+        (a, b) => new Date(b.issueDate) - new Date(a.issueDate),
+      )
+    : [];
   const sortedExperience = [...(user.experience || [])].sort((a, b) => {
     const aTime = (a.isCurrentlyWorking ? new Date() : new Date(a.endDate ?? a.startDate)).getTime();
     const bTime = (b.isCurrentlyWorking ? new Date() : new Date(b.endDate ?? b.startDate)).getTime();
@@ -55,26 +74,30 @@ const mapUserToPortfolio = (user) => {
       role: user.personalDetails?.jobRole || "Software Engineer",
 
       contact: [
-        {
-          title: "Email",
-          displayName: user.email,
-          link: `mailto:${user.email}?subject=${encodeURIComponent(`${name} : Contact Form Portfolio` || "Inquiry")}
+        ...(showEmail
+          ? [
+              {
+                title: "Email",
+                displayName: user.email,
+                link: `mailto:${user.email}?subject=${encodeURIComponent(`${name} : Contact Form Portfolio` || "Inquiry")}
           ?body=${encodeURIComponent("Hello " + name + ",\n\nI would like to connect with you regarding...")}`,
-          icon: "fa fa-envelope",
-        },
-        ...(user.contactDetails?.phones || []).map((p) => ({
+                icon: "fa fa-envelope",
+              },
+            ]
+          : []),
+        ...phones.map((p) => ({
           title: "Contact",
           displayName: p.number,
           link: `tel:${p.number}`,
           icon: "fa fa-mobile",
         })),
-        ...(user.contactDetails?.phones || []).map((p) => ({
+        ...phones.map((p) => ({
           title: "WhatsApp",
           displayName: p.number,
           link: `https://wa.me/${p.number}`,
           icon: "fa fa-brands fa-whatsapp",
         })),
-        ...(user.contactDetails?.addresses || []).map((a) => ({
+        ...addresses.map((a) => ({
           title: "Address",
           displayName: `${a.city}, ${a.state}, ${a.country}`,
           link:
@@ -177,6 +200,21 @@ const mapUserToPortfolio = (user) => {
             icon: `${s?.name?.toLowerCase()?.trim()}`,
             level: mapSkillLevel(s.level),
           })) || [],
+      },
+
+      certificationData: {
+        title: "Certifications",
+        sub_title:
+          "Industry-recognised credentials that validate expertise and a commitment to continuous learning.",
+        certificationItems: certifications.map((c) => ({
+          name: c.name,
+          issuer: c.issuingOrganization,
+          issueDate: c.issueDate?.toLocaleDateString(),
+          expiryDate: c.expirationDate?.toLocaleDateString() || "",
+          credentialId: c.credentialId || "",
+          credentialUrl: c.credentialUrl || "",
+          description: c.description || "",
+        })),
       },
     },
 

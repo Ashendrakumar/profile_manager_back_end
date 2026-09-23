@@ -94,6 +94,18 @@ const CertificationInput = z.object({
   expirationDate: z.coerce.date().optional(),
   credentialId: z.string().optional(),
   credentialUrl: z.string().optional(),
+  description: z.string().optional(),
+});
+
+// Tool-facing variant: MCP input schemas are published as JSON Schema, which
+// can't express Date, so dates are advertised as strings here and coerced by
+// CertificationInput when the handler parses them.
+const CertificationToolInput = CertificationInput.extend({
+  issueDate: z.string().describe("required, e.g. 2024-01-15"),
+  expirationDate: z
+    .string()
+    .optional()
+    .describe("e.g. 2027-01-15; omit if it never expires"),
 });
 
 const SECTION_SCHEMAS = {
@@ -127,11 +139,25 @@ function errorResult(err) {
 
 // Turns a ZodError into a compact, readable message for the MCP client.
 function zodErrorResult(zodErr) {
-  const details = zodErr.errors
+  // zod v4 exposes validation problems on `.issues` (`.errors` was removed).
+  const details = zodErr.issues
     .map((e) => `${e.path.join(".") || "(root)"}: ${e.message}`)
     .join("; ");
   return errorResult(new Error(`Validation failed — ${details}`));
 }
+
+// Expiry must not precede the issue date (checked on the resulting values).
+function certificationDateError(issueDate, expirationDate) {
+  if (issueDate && expirationDate && expirationDate < issueDate) {
+    return errorResult(
+      new Error("expirationDate cannot be before issueDate"),
+    );
+  }
+  return null;
+}
+
+const sortByIssueDateDesc = (certifications) =>
+  [...certifications].sort((a, b) => b.issueDate - a.issueDate);
 
 // -----------------------------------------------------------------
 // Build a fresh McpServer instance with all tools registered.
@@ -192,7 +218,7 @@ function buildMcpServer() {
     {
       title: "Get Profile",
       description:
-        "Get your full profile (personal details, contact, education, experience, projects, skills, resumes). Requires authToken from 'login'. Password is never returned.",
+        "Get your full profile (personal details, contact, education, experience, projects, skills, resumes, certifications). Requires authToken from 'login'. Password is never returned.",
       inputSchema: {
         authToken: z.string().describe("Token returned by the 'login' tool"),
       },
@@ -454,6 +480,148 @@ function buildMcpServer() {
         await user.save();
 
         return textResult({ message: `Deleted item from ${section}` });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  // ---------------------------------------------------------------
+  // CERTIFICATIONS — dedicated tools (same data as the generic
+  // section tools with section='certifications', plus date checks).
+  // ---------------------------------------------------------------
+  server.registerTool(
+    "list_certifications",
+    {
+      title: "List Certifications",
+      description:
+        "List your certifications, most recently issued first. Each item includes its _id (needed for update/delete) and an isExpired flag. Requires authToken from 'login'.",
+      inputSchema: {
+        authToken: z.string(),
+      },
+    },
+    async ({ authToken }) => {
+      try {
+        const { userId } = jwtService.requireAuth(authToken);
+        const user = await User.findById(userId).select("certifications");
+        if (!user) return errorResult(new Error("User not found"));
+
+        const now = new Date();
+        const certifications = sortByIssueDateDesc(user.certifications).map(
+          (c) => ({
+            ...c.toObject(),
+            isExpired: !!c.expirationDate && c.expirationDate < now,
+          }),
+        );
+        return textResult({ count: certifications.length, certifications });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "add_certification",
+    {
+      title: "Add Certification",
+      description:
+        "Add a certification. name, issuingOrganization and issueDate are required; omit expirationDate if it never expires. Requires authToken from 'login'.",
+      inputSchema: {
+        authToken: z.string(),
+        data: CertificationToolInput.describe("The certification to add"),
+      },
+    },
+    async ({ authToken, data }) => {
+      try {
+        const { userId } = jwtService.requireAuth(authToken);
+
+        const parsed = CertificationInput.safeParse(data);
+        if (!parsed.success) return zodErrorResult(parsed.error);
+        const dateError = certificationDateError(
+          parsed.data.issueDate,
+          parsed.data.expirationDate,
+        );
+        if (dateError) return dateError;
+
+        const user = await User.findById(userId).select("certifications");
+        if (!user) return errorResult(new Error("User not found"));
+
+        user.certifications.push(parsed.data);
+        await user.save();
+
+        const added = user.certifications[user.certifications.length - 1];
+        return textResult({ message: "Certification added", item: added });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "update_certification",
+    {
+      title: "Update Certification",
+      description:
+        "Update a certification by its _id (from list_certifications). Only send the fields you want to change. Requires authToken from 'login'.",
+      inputSchema: {
+        authToken: z.string(),
+        certificationId: z.string().describe("The certification's _id"),
+        data: CertificationToolInput.partial().describe("Fields to update"),
+      },
+    },
+    async ({ authToken, certificationId, data }) => {
+      try {
+        const { userId } = jwtService.requireAuth(authToken);
+
+        const parsed = CertificationInput.partial().safeParse(data);
+        if (!parsed.success) return zodErrorResult(parsed.error);
+
+        const user = await User.findById(userId).select("certifications");
+        if (!user) return errorResult(new Error("User not found"));
+
+        const item = user.certifications.id(certificationId);
+        if (!item) return errorResult(new Error("Certification not found"));
+
+        const dateError = certificationDateError(
+          parsed.data.issueDate ?? item.issueDate,
+          parsed.data.expirationDate ?? item.expirationDate,
+        );
+        if (dateError) return dateError;
+
+        Object.assign(item, parsed.data);
+        await user.save();
+
+        return textResult({ message: "Certification updated", item });
+      } catch (err) {
+        return errorResult(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "delete_certification",
+    {
+      title: "Delete Certification",
+      description:
+        "Delete a certification by its _id (from list_certifications). Requires authToken from 'login'.",
+      inputSchema: {
+        authToken: z.string(),
+        certificationId: z.string().describe("The certification's _id"),
+      },
+    },
+    async ({ authToken, certificationId }) => {
+      try {
+        const { userId } = jwtService.requireAuth(authToken);
+        const user = await User.findById(userId).select("certifications");
+        if (!user) return errorResult(new Error("User not found"));
+
+        const item = user.certifications.id(certificationId);
+        if (!item) return errorResult(new Error("Certification not found"));
+
+        item.deleteOne();
+        await user.save();
+
+        return textResult({ message: "Certification deleted" });
       } catch (err) {
         return errorResult(err);
       }

@@ -21,6 +21,15 @@ export const createUploader = ({ allowedFileTypes = "images" } = {}) => {
         /application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/,
       errorMsg: "Only document files are allowed (pdf, doc, docx)",
     },
+    // Documents module: office files, text, and images.
+    files: {
+      extensions:
+        /^\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|jpeg|jpg|png|webp|gif)$/,
+      mimeTypes:
+        /^(application\/(pdf|msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/(plain|csv)|image\/(jpeg|jpg|png|webp|gif))$/,
+      errorMsg:
+        "Unsupported file type (allowed: pdf, doc, docx, xls, xlsx, ppt, pptx, txt, csv, jpg, png, webp, gif)",
+    },
   };
 
   const currentRules = fileTypeRules[allowedFileTypes] || fileTypeRules.images;
