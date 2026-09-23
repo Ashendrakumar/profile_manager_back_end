@@ -1,12 +1,13 @@
 import User from "../models/User.js";
-import config from "../config/config.js";
+import * as storage from "../services/storageService.js";
 
 // ==================== Helper Functions ====================
 
-// Get full download URL
+// Get full download URL. Passes through values that are already absolute
+// (R2 URLs, Google avatars) and prefixes relative local paths with baseUrl.
 const getDownloadUrl = (filePath) => {
   if (!filePath) return null;
-  return `${config.baseUrl}${filePath}`;
+  return storage.resolveUrl(filePath);
 };
 
 // Shape a resume subdocument for API responses with an absolute download URL.

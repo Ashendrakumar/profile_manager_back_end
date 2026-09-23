@@ -1,17 +1,11 @@
-import config from "../config/config.js";
-
-const { baseUrl } = config;
+import { resolveUrl } from "../services/storageService.js";
 
 /**
- * Convert a stored relative upload path (e.g. "/uploads/portfolios/x.pdf")
- * into an absolute URL pointing at the API host, so cross-origin portfolio
- * pages (and mobile browsers) can reach and download the file.
+ * Convert a stored upload value into an absolute URL the portfolio can reach.
+ * Local paths (e.g. "/uploads/portfolios/x.pdf") get the API host prefixed;
+ * values already absolute (Cloudflare R2 URLs, Google avatars) pass through.
  */
-const toAbsoluteUrl = (filePath) => {
-  if (!filePath) return "";
-  if (/^https?:\/\//i.test(filePath)) return filePath;
-  return `${baseUrl}${filePath.startsWith("/") ? "" : "/"}${filePath}`;
-};
+const toAbsoluteUrl = (filePath) => resolveUrl(filePath);
 
 const links = [
   { label: "About", url: "/about" },

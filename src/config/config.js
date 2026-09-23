@@ -23,6 +23,24 @@ const config = {
     process.env.GOOGLE_CALLBACK_URL ||
     `http://localhost:${process.env.PORT || 10000}/api/users/auth/google/callback`,
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
+  // File storage. Defaults to local disk so dev works with no extra setup;
+  // set STORAGE_DRIVER=r2 in production to use Cloudflare R2 (free blob store,
+  // S3-compatible, no egress fees). Uploaded files survive redeploys, unlike
+  // the ephemeral disk on hosts such as Render.
+  storage: {
+    driver: (process.env.STORAGE_DRIVER || "local").toLowerCase(), // "local" | "r2"
+    r2: {
+      accountId: process.env.R2_ACCOUNT_ID,
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+      bucket: process.env.R2_BUCKET,
+      // Optional explicit endpoint; otherwise derived from the account id.
+      endpoint: process.env.R2_ENDPOINT,
+      // Public base URL for the bucket (r2.dev public URL or a custom domain),
+      // e.g. https://pub-xxxxxxxx.r2.dev — used to build download links.
+      publicUrl: (process.env.R2_PUBLIC_URL || "").replace(/\/+$/, ""),
+    },
+  },
 };
 
 export default config;
