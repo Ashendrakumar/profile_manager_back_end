@@ -164,6 +164,7 @@ const CertificationSchema = new mongoose.Schema(
     expirationDate: { type: Date }, // omit if it doesn't expire
     credentialId: { type: String },
     credentialUrl: { type: String }, // link to verify the credential
+    description: { type: String, trim: true },
   },
   { timestamps: true },
 );

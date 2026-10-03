@@ -111,26 +111,15 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateToken);
 
-// Create uploader instances
-const profileUploader = createUploader({
-  folder: "profiles",
-  allowedFileTypes: "images",
-});
+// Create uploader instances. The storage service decides where bytes land
+// (local disk vs Cloudflare R2); the uploader only validates type/size and
+// buffers the file in memory. The target folder is chosen at save time in the
+// controller.
+const profileUploader = createUploader({ allowedFileTypes: "images" });
 
-const heroUploader = createUploader({
-  folder: "heroes",
-  allowedFileTypes: "images",
-});
+const heroUploader = createUploader({ allowedFileTypes: "images" });
 
-const resumeUploader = createUploader({
-  folder: "portfolios",
-  allowedFileTypes: "documents", // Allow PDFs, docs
-});
-
-const portfolioUploader = createUploader({
-  folder: "portfolios",
-  allowedFileTypes: "images",
-});
+const resumeUploader = createUploader({ allowedFileTypes: "documents" }); // PDFs, docs
 
 // Routes with middleware
 router.post(

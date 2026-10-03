@@ -36,6 +36,8 @@ const options = {
     "./src/routes/profile.route.js",
     "./src/routes/portfolio.route.js",
     "./src/routes/upload.route.js",
+    "./src/routes/settings.route.js",
+    "./src/routes/documents.route.js",
   ],
 };
 

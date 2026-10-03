@@ -350,6 +350,95 @@
  *         description: Skill deleted
  */
 
+/**
+ * @swagger
+ * /api/profile/certifications:
+ *   get:
+ *     tags:
+ *       - Profile
+ *     summary: Get certifications (most recently issued first)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Certifications list
+ *   post:
+ *     tags:
+ *       - Profile
+ *     summary: Add certification
+ *     description: Accepts model field names or the front-end aliases (title, issuer, expiryDate).
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, issuingOrganization, issueDate]
+ *             properties:
+ *               name:
+ *                 type: string
+ *               issuingOrganization:
+ *                 type: string
+ *               issueDate:
+ *                 type: string
+ *                 format: date
+ *               expirationDate:
+ *                 type: string
+ *                 format: date
+ *               credentialId:
+ *                 type: string
+ *               credentialUrl:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Certification added
+ */
+
+/**
+ * @swagger
+ * /api/profile/certifications/{certificationId}:
+ *   put:
+ *     tags:
+ *       - Profile
+ *     summary: Update certification
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: certificationId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       200:
+ *         description: Certification updated
+ *   delete:
+ *     tags:
+ *       - Profile
+ *     summary: Delete certification
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: certificationId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Certification deleted
+ */
+
 import express from "express";
 import {
   // Personal Details
@@ -379,6 +468,11 @@ import {
   addSkill,
   updateSkill,
   deleteSkill,
+  // Certifications
+  getCertifications,
+  addCertification,
+  updateCertification,
+  deleteCertification,
   // Profile Completion
   getProfileCompletion,
 } from "../controllers/profile.controller.js";
@@ -421,6 +515,12 @@ router.get("/skills", getSkills);
 router.post("/skills", addSkill);
 router.put("/skills/:skillId", updateSkill);
 router.delete("/skills/:skillId", deleteSkill);
+
+// Certifications routes
+router.get("/certifications", getCertifications);
+router.post("/certifications", addCertification);
+router.put("/certifications/:certificationId", updateCertification);
+router.delete("/certifications/:certificationId", deleteCertification);
 
 // Profile Completion routes
 router.get("/completion", getProfileCompletion);

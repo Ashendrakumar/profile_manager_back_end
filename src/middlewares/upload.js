@@ -1,42 +1,12 @@
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 
-import { fileURLToPath } from "url";
-
-// Fix for __dirname in ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Create folder if not exists
-const createFolder = (folderPath) => {
-  if (!fs.existsSync(folderPath)) {
-    fs.mkdirSync(folderPath, { recursive: true });
-  }
-};
-
-// Reusable uploader
-export const createUploader = ({
-  folder = "common",
-  allowedFileTypes = "images",
-}) => {
-  const uploadPath = path.join(__dirname, `../uploads/${folder}`);
-
-  createFolder(uploadPath);
-
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, uploadPath);
-    },
-
-    filename: (req, file, cb) => {
-      const uniqueName = `${Date.now()}-${Math.round(
-        Math.random() * 1e9,
-      )}${path.extname(file.originalname)}`;
-
-      cb(null, uniqueName);
-    },
-  });
+// Uploads are held in memory as buffers and then handed to the storage service
+// (src/services/storageService.js), which decides where the bytes actually go —
+// local disk in dev, Cloudflare R2 in production. Multer no longer touches the
+// filesystem directly, so switching the storage driver requires no changes here.
+export const createUploader = ({ allowedFileTypes = "images" } = {}) => {
+  const storage = multer.memoryStorage();
 
   // Define allowed file types
   const fileTypeRules = {
@@ -50,6 +20,15 @@ export const createUploader = ({
       mimeTypes:
         /application\/(pdf|msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)/,
       errorMsg: "Only document files are allowed (pdf, doc, docx)",
+    },
+    // Documents module: office files, text, and images.
+    files: {
+      extensions:
+        /^\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv|jpeg|jpg|png|webp|gif)$/,
+      mimeTypes:
+        /^(application\/(pdf|msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/(plain|csv)|image\/(jpeg|jpg|png|webp|gif))$/,
+      errorMsg:
+        "Unsupported file type (allowed: pdf, doc, docx, xls, xlsx, ppt, pptx, txt, csv, jpg, png, webp, gif)",
     },
   };
 

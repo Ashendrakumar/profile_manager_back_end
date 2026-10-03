@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import User from "../models/User.js";
 import config from "../config/config.js";
+import * as storage from "../services/storageService.js";
 import { sendOtpEmail } from "../utils/emailService.js";
 import { getGoogleAuthUrl, getGoogleUserProfile } from "../utils/googleAuth.js";
 
@@ -279,10 +280,11 @@ const loginUser = async (req, res) => {
   }
 };
 
-// Get full download URL
+// Get full download URL. Passes through absolute URLs (R2, Google avatars) and
+// prefixes relative local paths with baseUrl.
 const getDownloadUrl = (filePath) => {
   if (!filePath) return null;
-  return `${config.baseUrl}${filePath}`;
+  return storage.resolveUrl(filePath);
 };
 
 function mapUserData(user) {

@@ -1,39 +1,10 @@
 import { createUploader } from "../middlewares/upload.js";
 import User from "../models/User.js";
-import config from "../config/config.js";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-
-// Resolve the uploads root from this module's location (src/uploads), so file
-// deletion/streaming is independent of the process working directory. This
-// matches where multer writes (middlewares/upload.js) and where app.js serves.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const UPLOADS_ROOT = path.join(__dirname, "..");
+import * as storage from "../services/storageService.js";
 
 // Hero images are uploaded inside the controller (multiple files), so this
 // uploader lives here. Profile/resume uploaders are wired in upload.route.js.
-const heroUpload = createUploader({
-  folder: "heroes",
-});
-
-/**
- * Delete a previously stored upload from disk (best-effort).
- * Prevents orphaned files accumulating every time a user replaces their
- * profile image or resume. `storedPath` is the DB value, e.g.
- * "/uploads/profiles/123.webp".
- */
-const removeStoredFile = (storedPath) => {
-  if (!storedPath) return;
-  try {
-    const absolutePath = path.join(UPLOADS_ROOT, storedPath);
-    if (fs.existsSync(absolutePath)) {
-      fs.unlink(absolutePath, () => {});
-    }
-  } catch {
-    // ignore cleanup failures — they must not block the upload response
-  }
-};
+const heroUpload = createUploader({ allowedFileTypes: "images" });
 
 /**
  * Resolve the user's effective resume path: the one marked primary, falling
@@ -51,13 +22,13 @@ const resolvePrimaryResumePath = (user) => {
 
 /**
  * Shape a resume subdocument for API responses: expose a ready-to-use absolute
- * download URL alongside the stored relative path.
+ * download URL alongside the stored path/URL.
  */
 const formatResume = (resume) => ({
   _id: resume._id,
   fileName: resume.fileName,
   filePath: resume.filePath,
-  downloadUrl: `${config.baseUrl}${resume.filePath}`,
+  downloadUrl: storage.resolveUrl(resume.filePath),
   isPrimary: resume.isPrimary,
   uploadedAt: resume.createdAt,
 });
@@ -77,19 +48,24 @@ const uploadProfile = async (req, res) => {
       });
     }
 
-    const profileFile = req.file;
     const userId = req.user.userId;
-    const profileImage = `/uploads/profiles/${profileFile.filename}`;
 
-    // Capture the previous image so we can clean it up after a successful swap.
+    // Confirm the user exists before we commit the upload, so a bad user id
+    // doesn't leave an orphaned blob behind.
     const existing = await User.findById(userId).select("profileImage");
     if (!existing) {
-      removeStoredFile(profileImage);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
+
+    const { storedValue: profileImage } = await storage.save({
+      buffer: req.file.buffer,
+      folder: "profiles",
+      originalName: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
@@ -97,15 +73,16 @@ const uploadProfile = async (req, res) => {
       { new: true },
     );
 
+    // Clean up the previous image after a successful swap.
     if (existing.profileImage && existing.profileImage !== profileImage) {
-      removeStoredFile(existing.profileImage);
+      await storage.remove(existing.profileImage);
     }
 
     return res.status(200).json({
       success: true,
       message: "Profile uploaded successfully",
-      file: profileFile,
       profileImage: updatedUser.profileImage,
+      profileImageUrl: storage.resolveUrl(updatedUser.profileImage),
     });
   } catch (error) {
     return res.status(500).json({
@@ -135,10 +112,26 @@ const uploadHeroImages = async (req, res) => {
       });
     }
 
+    const heroes = await Promise.all(
+      req.files.map(async (file) => {
+        const { storedValue, url } = await storage.save({
+          buffer: file.buffer,
+          folder: "heroes",
+          originalName: file.originalname,
+          contentType: file.mimetype,
+        });
+        return {
+          fileName: file.originalname,
+          filePath: storedValue,
+          url,
+        };
+      }),
+    );
+
     return res.status(200).json({
       success: true,
       message: "Hero images uploaded successfully",
-      files: req.files,
+      heroes,
     });
   } catch (error) {
     return res.status(500).json({
@@ -162,16 +155,22 @@ const uploadResumePdf = async (req, res) => {
     }
 
     const userId = req.user.userId;
-    const resumePath = `/uploads/portfolios/${req.file.filename}`;
 
     const user = await User.findById(userId).select("resumes");
     if (!user) {
-      removeStoredFile(resumePath);
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
+
+    const { storedValue: resumePath } = await storage.save({
+      buffer: req.file.buffer,
+      folder: "portfolios",
+      originalName: req.file.originalname,
+      contentType: req.file.mimetype || "application/pdf",
+      download: true, // resumes should download, not render inline
+    });
 
     const isFirstResume = user.resumes.length === 0;
 
@@ -181,14 +180,13 @@ const uploadResumePdf = async (req, res) => {
       isPrimary: isFirstResume,
     };
 
-    const updatedUser = await User.findByIdAndUpdate(userId, {
-      $push: { resumes: resume },
-    });
+    user.resumes.push(resume);
+    await user.save();
 
     return res.status(201).json({
       success: true,
       message: "Resume uploaded successfully",
-      resumes: formatResumes(updatedUser.resumes),
+      resumes: formatResumes(user.resumes),
     });
   } catch (error) {
     return res.status(500).json({
@@ -295,7 +293,7 @@ const deleteResume = async (req, res) => {
     }
 
     await user.save();
-    removeStoredFile(removedPath);
+    await storage.remove(removedPath);
 
     return res.status(200).json({
       success: true,
@@ -308,7 +306,7 @@ const deleteResume = async (req, res) => {
 };
 
 // ===============================
-// Download Resume (stream file)
+// Download Resume (redirect to the stored file)
 // ===============================
 
 const downloadResume = async (req, res) => {
@@ -324,29 +322,10 @@ const downloadResume = async (req, res) => {
       });
     }
 
-    const resumePath = path.join(UPLOADS_ROOT, storedPath);
-
-    if (!fs.existsSync(resumePath)) {
-      return res.status(404).json({
-        success: false,
-        message: "Resume file not found on disk",
-      });
-    }
-
-    const filename = path.basename(storedPath);
-
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Type", "application/pdf");
-
-    res.download(resumePath, filename, (err) => {
-      if (err && !res.headersSent) {
-        return res.status(500).json({
-          success: false,
-          message: "Failed to download resume",
-          error: err.message,
-        });
-      }
-    });
+    // Works for both drivers: local resolves to the express.static URL (which
+    // sends Content-Disposition: attachment) and R2 resolves to its public URL
+    // (which carries the attachment disposition set at upload time).
+    return res.redirect(storage.resolveUrl(storedPath));
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -362,7 +341,6 @@ const downloadResume = async (req, res) => {
 const downloadFileByPath = async (req, res) => {
   try {
     const userId = req.user.userId;
-    // FIX: fetch user from DB, not from req.user (which only has auth payload)
     const user = await User.findById(userId).select("resumes resume");
 
     const storedPath = user ? resolvePrimaryResumePath(user) : "";
@@ -373,12 +351,10 @@ const downloadFileByPath = async (req, res) => {
       });
     }
 
-    const resumeDownloadUrl = getDownloadUrl(storedPath);
-
     return res.status(200).json({
       success: true,
       message: "File link retrieved successfully",
-      fileLink: resumeDownloadUrl,
+      fileLink: storage.resolveUrl(storedPath),
     });
   } catch (error) {
     return res.status(500).json({
@@ -386,15 +362,6 @@ const downloadFileByPath = async (req, res) => {
       message: error.message,
     });
   }
-};
-
-// ===============================
-// Helper
-// ===============================
-
-const getDownloadUrl = (filePath) => {
-  if (!filePath) return null;
-  return `${config.baseUrl}${filePath}`;
 };
 
 export {
